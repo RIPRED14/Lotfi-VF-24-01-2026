@@ -148,17 +148,17 @@ const LecturesEnAttentePage = () => {
       }
 
       // 3. Récupérer les informations des échantillons pour ces form_ids
-      // IMPORTANT : On filtre UNIQUEMENT les échantillons en "waiting_reading"
-      // pour éviter d'afficher les formulaires encore en "analyses_en_cours"
+      // MODIFICATION : Récupérer TOUS les échantillons, pas seulement ceux en "waiting_reading"
+      // pour afficher tous les formulaires même s'ils sont encore en "analyses_en_cours"
       console.log('📊 2. Récupération des échantillons pour ces formulaires...');
       const { data: samplesData, error: samplesError } = await supabase
         .from('samples')
         .select('form_id, report_title, brand, site, created_at, modified_at, status')
         .in('form_id', formIds)
-        .eq('status', 'waiting_reading') // FILTRER par status !
+        // Pas de filtre sur le statut - on récupère tous les statuts
         .not('form_id', 'is', null);
 
-      console.log('📊 Échantillons en waiting_reading trouvés:', samplesData?.length || 0);
+      console.log('📊 Échantillons trouvés (tous statuts):', samplesData?.length || 0);
 
       // 4. Récupérer les dates d'analyse et infos depuis sample_forms
       console.log('📅 3. Récupération des infos depuis sample_forms...');
@@ -335,12 +335,11 @@ const LecturesEnAttentePage = () => {
     }, {});
 
     // Ajouter les bactéries à chaque formulaire
-    // IMPORTANT : On n'affiche QUE les formulaires qui ont des échantillons en "waiting_reading"
-    // Les formulaires encore en "analyses_en_cours" sont ignorés
+    // MODIFICATION : Afficher TOUS les formulaires qui ont des bactéries, quel que soit le statut
     Object.keys(bacteriaByFormId).forEach(formId => {
-      // Si ce formulaire n'a pas d'échantillons en "waiting_reading", on le saute
+      // Si ce formulaire n'a pas d'échantillons du tout, on le saute
       if (!formGroups[formId]) {
-        console.log(`⏭️ Formulaire ${formId} ignoré : pas encore d'échantillons en waiting_reading`);
+        console.log(`⏭️ Formulaire ${formId} ignoré : aucun échantillon trouvé`);
         return; // Ne pas créer d'entrée pour ce formulaire
       }
       
@@ -348,28 +347,15 @@ const LecturesEnAttentePage = () => {
       formGroups[formId].bacteria_list = bacteriaByFormId[formId];
     });
 
-    // Fonction pour vérifier si un formulaire est entièrement complété
-    const isFormFullyCompleted = (form: any) => {
-      const bacteriaList = form.bacteria_list || [];
-      return bacteriaList.length > 0 && bacteriaList.every((bacteria: any) => bacteria.status === 'completed');
-    };
-
+    // MODIFICATION : Afficher TOUS les formulaires, même ceux entièrement complétés
     const allProcessedForms = Object.values(formGroups).filter((form: any) => 
       form.bacteria_list.length > 0
     );
 
-    // FILTRER les formulaires entièrement complétés (ils doivent disparaître de cette page)
-    const formsWithPendingBacteria = allProcessedForms.filter((form: any) => {
-      const isFullyCompleted = isFormFullyCompleted(form);
-      if (isFullyCompleted) {
-        console.log(`🎯 Formulaire ${form.form_id} entièrement complété - MASQUÉ de lectures-en-attente`);
-        return false; // Ne pas afficher dans lectures-en-attente
-      }
-      return true; // Afficher dans lectures-en-attente
-    });
+    // Ne plus filtrer les formulaires complétés - afficher TOUS les formulaires
+    const formsWithPendingBacteria = allProcessedForms;
 
-    console.log('✅ Formulaires traités (avant filtrage):', allProcessedForms.length);
-    console.log('✅ Formulaires affichés (après filtrage des complétés):', formsWithPendingBacteria.length);
+    console.log('✅ Formulaires traités et affichés:', allProcessedForms.length);
     
     // Afficher les détails pour debugging
     formsWithPendingBacteria.forEach((form: any) => {
