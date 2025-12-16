@@ -181,6 +181,15 @@ const LecturesEnAttentePage = () => {
         });
       }
       console.log('✅ Infos formulaires récupérées:', sampleFormsInfoMap.size);
+      
+      // DEBUG: Afficher les infos de chaque formulaire
+      sampleFormsInfoMap.forEach((info, formId) => {
+        console.log(`   📋 ${formId}:`, {
+          brand: info.brand || '❌ MANQUANT',
+          site: info.site || '❌ MANQUANT',
+          title: info.report_title || '❌ MANQUANT'
+        });
+      });
 
       if (samplesError) {
         console.error('❌ Erreur échantillons:', samplesError);
@@ -318,14 +327,19 @@ const LecturesEnAttentePage = () => {
         // Récupérer les infos depuis sample_forms si disponibles
         const formInfo = sampleFormsInfoMap?.get(formId);
         
+        // Priorité: formInfo > sample > 'N/A'
+        const brand = formInfo?.brand || sample.brand || 'N/A';
+        const site = formInfo?.site || sample.site || 'N/A';
+        const title = formInfo?.report_title || sample.report_title || `Formulaire ${formId}`;
+        
         acc[formId] = {
           form_id: formId,
-          report_title: formInfo?.report_title || sample.report_title,
-          brand: sample.brand || formInfo?.brand || 'N/A',
-          site: sample.site || formInfo?.site || 'N/A',
+          report_title: title,
+          brand: brand,
+          site: site,
           created_at: sample.created_at,
           modified_at: sample.modified_at,
-          sample_date: sampleDatesMap?.get(formId) || sample.created_at, // Utiliser la date d'analyse choisie
+          sample_date: sampleDatesMap?.get(formId) || sample.created_at,
           sample_count: 0,
           bacteria_list: []
         };
@@ -337,14 +351,14 @@ const LecturesEnAttentePage = () => {
     // Ajouter les bactéries à chaque formulaire
     // MODIFICATION : Afficher TOUS les formulaires qui ont des bactéries, même sans échantillons
     Object.keys(bacteriaByFormId).forEach(formId => {
-      // Si ce formulaire n'a pas d'échantillons, créer une entrée vide
+      // Si ce formulaire n'a pas d'échantillons, créer une entrée avec les infos de sample_forms
       if (!formGroups[formId]) {
-        console.log(`⚠️ Formulaire ${formId} : aucun échantillon trouvé, création d'une entrée avec infos de sample_forms`);
-        
-        // Récupérer les infos depuis sample_forms si disponibles
         const formInfo = sampleFormsInfoMap?.get(formId);
         
-        // Créer une entrée même sans échantillon
+        console.log(`⚠️ Formulaire ${formId} : aucun échantillon trouvé`);
+        console.log(`   Infos sample_forms:`, formInfo || '❌ AUCUNE');
+        
+        // Créer une entrée même sans échantillon, avec les infos disponibles
         formGroups[formId] = {
           form_id: formId,
           report_title: formInfo?.report_title || `Formulaire ${formId}`,
@@ -356,6 +370,12 @@ const LecturesEnAttentePage = () => {
           sample_count: 0,
           bacteria_list: []
         };
+        
+        console.log(`   ✅ Entrée créée:`, {
+          brand: formGroups[formId].brand,
+          site: formGroups[formId].site,
+          title: formGroups[formId].report_title
+        });
       }
       
       // Ajouter toutes les bactéries de ce formulaire
