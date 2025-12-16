@@ -362,15 +362,28 @@ const LecturesEnAttentePage = () => {
       formGroups[formId].bacteria_list = bacteriaByFormId[formId];
     });
 
-    // MODIFICATION : Afficher TOUS les formulaires, même ceux entièrement complétés
+    // Fonction pour vérifier si un formulaire est entièrement complété
+    const isFormFullyCompleted = (form: any) => {
+      const bacteriaList = form.bacteria_list || [];
+      return bacteriaList.length > 0 && bacteriaList.every((bacteria: any) => bacteria.status === 'completed');
+    };
+
     const allProcessedForms = Object.values(formGroups).filter((form: any) => 
       form.bacteria_list.length > 0
     );
 
-    // Ne plus filtrer les formulaires complétés - afficher TOUS les formulaires
-    const formsWithPendingBacteria = allProcessedForms;
+    // FILTRER les formulaires entièrement complétés (ils sont archivés dans forms-history)
+    const formsWithPendingBacteria = allProcessedForms.filter((form: any) => {
+      const isFullyCompleted = isFormFullyCompleted(form);
+      if (isFullyCompleted) {
+        console.log(`🎯 Formulaire ${form.form_id} entièrement complété - MASQUÉ (archivé dans forms-history)`);
+        return false; // Ne pas afficher dans lectures-en-attente
+      }
+      return true; // Afficher dans lectures-en-attente
+    });
 
-    console.log('✅ Formulaires traités et affichés:', allProcessedForms.length);
+    console.log('✅ Formulaires traités (avant filtrage):', allProcessedForms.length);
+    console.log('✅ Formulaires affichés (après filtrage des complétés):', formsWithPendingBacteria.length);
     
     // Afficher les détails pour debugging
     formsWithPendingBacteria.forEach((form: any) => {
