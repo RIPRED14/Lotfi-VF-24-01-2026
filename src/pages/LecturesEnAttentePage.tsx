@@ -334,10 +334,24 @@ const LecturesEnAttentePage = () => {
 
     // Ajouter les bactéries à chaque formulaire
     Object.keys(bacteriaByFormId).forEach(formId => {
-      // Si ce formulaire n'a pas d'échantillons, on le saute (il n'apparaîtra pas)
+      // Si ce formulaire n'a pas d'échantillons, créer une entrée avec les infos de sample_forms
       if (!formGroups[formId]) {
-        console.log(`⏭️ Formulaire ${formId} : aucun échantillon trouvé dans samples`);
-        return;
+        const formInfo = sampleFormsInfoMap?.get(formId);
+        
+        console.log(`⚠️ Formulaire ${formId} : aucun échantillon trouvé dans samples, création avec sample_forms`);
+        
+        // Créer une entrée même sans échantillon
+        formGroups[formId] = {
+          form_id: formId,
+          report_title: formInfo?.report_title || `Formulaire ${formId}`,
+          brand: formInfo?.brand || 'N/A',
+          site: formInfo?.site || 'N/A',
+          created_at: new Date().toISOString(),
+          modified_at: new Date().toISOString(),
+          sample_date: sampleDatesMap?.get(formId) || new Date().toISOString(),
+          sample_count: 0,
+          bacteria_list: []
+        };
       }
       
       // Ajouter toutes les bactéries de ce formulaire
