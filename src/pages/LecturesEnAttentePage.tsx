@@ -181,15 +181,6 @@ const LecturesEnAttentePage = () => {
         });
       }
       console.log('✅ Infos formulaires récupérées:', sampleFormsInfoMap.size);
-      
-      // DEBUG: Afficher les infos de chaque formulaire
-      sampleFormsInfoMap.forEach((info, formId) => {
-        console.log(`   📋 ${formId}:`, {
-          brand: info.brand || '❌ MANQUANT',
-          site: info.site || '❌ MANQUANT',
-          title: info.report_title || '❌ MANQUANT'
-        });
-      });
 
       if (samplesError) {
         console.error('❌ Erreur échantillons:', samplesError);
@@ -320,83 +311,37 @@ const LecturesEnAttentePage = () => {
 
     console.log('📋 Form IDs avec bactéries:', Object.keys(bacteriaByFormId));
 
-    // NOUVELLE LOGIQUE : Construire les formulaires à partir de sample_forms D'ABORD
-    // Cela garantit que tous les formulaires avec des infos dans sample_forms sont affichés
-    const formGroups = {};
-    
-    // 1. Créer les entrées à partir de sample_forms (source principale d'infos)
-    if (sampleFormsData) {
-      sampleFormsData.forEach(formInfo => {
-        const formId = formInfo.report_id;
-        formGroups[formId] = {
+    // Grouper les échantillons par form_id (logique basée sur samples)
+    const formGroups = samplesData.reduce((acc, sample) => {
+      const formId = sample.form_id;
+      if (!acc[formId]) {
+        // Utiliser les infos directement depuis le sample (qui contient brand, site, report_title)
+        acc[formId] = {
           form_id: formId,
-          report_title: formInfo.report_title || `Formulaire ${formId}`,
-          brand: formInfo.brand_name || 'N/A',
-          site: formInfo.site || 'N/A',
-          created_at: formInfo.created_at || new Date().toISOString(),
-          modified_at: new Date().toISOString(),
-          sample_date: formInfo.sample_date || new Date().toISOString(),
-          sample_count: 0,
-          bacteria_list: []
-        };
-      });
-    }
-    
-    // 2. Compter les échantillons pour chaque formulaire
-    if (samplesData) {
-      samplesData.forEach(sample => {
-        const formId = sample.form_id;
-        // Si le formulaire n'existe pas encore, le créer avec les infos du sample
-        if (!formGroups[formId]) {
-          const formInfo = sampleFormsInfoMap?.get(formId);
-          formGroups[formId] = {
-            form_id: formId,
-            report_title: formInfo?.report_title || sample.report_title || `Formulaire ${formId}`,
-            brand: formInfo?.brand || sample.brand || 'N/A',
-            site: formInfo?.site || sample.site || 'N/A',
-            created_at: sample.created_at,
-            modified_at: sample.modified_at,
-            sample_date: sampleDatesMap?.get(formId) || sample.created_at,
-            sample_count: 0,
-            bacteria_list: []
-          };
-        }
-        // Incrémenter le nombre d'échantillons
-        formGroups[formId].sample_count++;
-      });
-    }
-    
-    console.log('📋 Formulaires créés depuis sample_forms:', Object.keys(formGroups).length);
-
-    // Ajouter les bactéries à chaque formulaire
-    Object.keys(bacteriaByFormId).forEach(formId => {
-      // Si ce formulaire n'existe pas encore (pas dans sample_forms ni dans samples)
-      if (!formGroups[formId]) {
-        console.log(`⚠️ Formulaire ${formId} : ni dans sample_forms ni dans samples, création minimale`);
-        
-        formGroups[formId] = {
-          form_id: formId,
-          report_title: `Formulaire ${formId}`,
-          brand: 'N/A',
-          site: 'N/A',
-          created_at: new Date().toISOString(),
-          modified_at: new Date().toISOString(),
-          sample_date: new Date().toISOString(),
+          report_title: sample.report_title || `Formulaire ${formId}`,
+          brand: sample.brand || 'N/A',
+          site: sample.site || 'N/A',
+          created_at: sample.created_at,
+          modified_at: sample.modified_at,
+          sample_date: sample.created_at,
           sample_count: 0,
           bacteria_list: []
         };
       }
+      acc[formId].sample_count++;
+      return acc;
+    }, {});
+
+    // Ajouter les bactéries à chaque formulaire
+    Object.keys(bacteriaByFormId).forEach(formId => {
+      // Si ce formulaire n'a pas d'échantillons, on le saute (il n'apparaîtra pas)
+      if (!formGroups[formId]) {
+        console.log(`⏭️ Formulaire ${formId} : aucun échantillon trouvé dans samples`);
+        return;
+      }
       
       // Ajouter toutes les bactéries de ce formulaire
       formGroups[formId].bacteria_list = bacteriaByFormId[formId];
-      
-      console.log(`✅ Formulaire ${formId}:`, {
-        brand: formGroups[formId].brand,
-        site: formGroups[formId].site,
-        title: formGroups[formId].report_title,
-        samples: formGroups[formId].sample_count,
-        bacteria: formGroups[formId].bacteria_list.length
-      });
     });
 
     // Fonction pour vérifier si un formulaire est entièrement complété
