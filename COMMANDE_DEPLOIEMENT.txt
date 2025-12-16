@@ -1,0 +1,9 @@
+COPIEZ ET COLLEZ CETTE COMMANDE DANS POWERSHELL :
+
+vercel --prod --name collims --yes
+
+PUIS APPUYEZ SUR ENTREE
+
+
+
+

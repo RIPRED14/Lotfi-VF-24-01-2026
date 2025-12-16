@@ -1,0 +1,9 @@
+node_modules
+dist
+build
+release
+electron
+.next
+.git
+.DS_Store
+*.log

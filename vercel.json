@@ -1,0 +1,17 @@
+{
+  "name": "collims",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "env": {
+    "VITE_SUPABASE_URL": "https://vwecfxtgqyuydhlvutvg.supabase.co",
+    "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3ZWNmeHRncXl1eWRobHZ1dHZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3MzY5OTQsImV4cCI6MjA3NzMxMjk5NH0.6oZR5-NV8XDxQgIJlm4R7zarf5kFg0-tN26ko_kpye8"
+  }
+}
+

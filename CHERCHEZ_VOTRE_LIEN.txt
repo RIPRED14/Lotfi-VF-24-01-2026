@@ -1,0 +1,53 @@
+========================================
+   UNE FENETRE POWERSHELL BLEUE 
+   VIENT DE S'OUVRIR !
+========================================
+
+REGARDEZ SUR VOTRE ECRAN !
+
+Vous devriez voir une fenêtre BLEUE (PowerShell)
+avec le titre en haut qui contient "PowerShell"
+
+DANS CETTE FENETRE :
+-------------------
+
+1. Le deploiement est EN COURS (2-3 minutes)
+
+2. Vous verrez des messages defiler :
+   - "Building..."
+   - "Uploading..."
+   - "Deploying..."
+
+3. A LA FIN, cherchez une ligne comme :
+
+   ✓ Production: https://collims-xxxxx.vercel.app
+
+   OU
+
+   https://collims.vercel.app
+
+
+CE LIEN = VOTRE APPLICATION EN LIGNE !
+=====================================
+
+COPIEZ-LE et collez-le dans votre navigateur !
+
+========================================
+
+SI VOUS NE VOYEZ PAS LA FENETRE :
+---------------------------------
+
+1. Regardez dans la BARRE DES TACHES (en bas)
+2. Cherchez une icone PowerShell (P bleu)
+3. Cliquez dessus !
+
+OU
+
+Appuyez sur ALT + TAB pour basculer entre
+les fenetres ouvertes
+
+========================================
+
+
+
+

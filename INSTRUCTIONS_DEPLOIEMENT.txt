@@ -1,0 +1,65 @@
+========================================
+  DEPLOIEMENT VERCEL - INSTRUCTIONS
+========================================
+
+UNE FENETRE POWERSHELL VA S'OUVRIR !
+
+REPONDEZ AUX QUESTIONS SUIVANTES :
+
+Question 1:
+-----------
+? Set up and deploy "V31-master"? [Y/n]
+
+→ Tapez: Y
+→ Appuyez sur ENTREE
+
+
+Question 2:
+-----------
+? Which scope do you want to deploy to?
+
+→ Utilisez les fleches ↑↓ pour selectionner votre compte
+→ Appuyez sur ENTREE
+
+
+Question 3:
+-----------
+? Link to existing project? [y/N]
+
+→ Tapez: N
+→ Appuyez sur ENTREE
+
+
+Question 4: (IMPORTANT!)
+------------------------
+? What's your project's name? (V31-master)
+
+→ EFFACEZ "V31-master"
+→ Tapez: collims
+→ Appuyez sur ENTREE
+
+
+Question 5:
+-----------
+? In which directory is your code located? ./
+
+→ Appuyez simplement sur ENTREE
+
+
+ENSUITE:
+--------
+Vercel va builder et deployer (2-3 minutes)
+
+A LA FIN:
+---------
+Vous verrez:
+
+✓ Production: https://collims.vercel.app
+
+COPIEZ CE LIEN !
+
+========================================
+
+
+
+

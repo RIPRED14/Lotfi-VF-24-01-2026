@@ -1,0 +1,98 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Production builds
+dist/
+build/
+release/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Electron
+*.asar
+out/
+
+# Scripts de test temporaires
+*.cjs
+!*.config.cjs
+verify-*.js
+test-*.js
+create-*.js
+add-*.js
+apply-*.js
+check-*.js
+discover-*.js
+remove-*.js
+sync-*.js
+update-*.js
+fix-*.js
+insert-*.js
+correction-*.js
+debug-*.js
+chercher-*.js
+list-*.js
+mettre-*.js
+
+# Fichiers HTML de test
+*.html
+!index.html
+!public/*.html
+
+# Fichiers SQL temporaires
+*.sql
+
+# Fichiers de documentation temporaires
+INSTRUCTIONS_*.md
+
+# Fichiers Python temporaires
+*.py
+!serveur-lotfi.py
+
+# Fichiers de test
+test-*.txt
+test-*.md
+
+.vercel
+
+.vercel

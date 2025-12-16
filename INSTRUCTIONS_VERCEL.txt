@@ -1,0 +1,57 @@
+========================================
+  DEPLOIEMENT COLLIMS SUR VERCEL
+========================================
+
+UNE FENETRE POWERSHELL EST OUVERTE !
+
+ETAPE 1 : CONNEXION
+-------------------
+Dans la fenetre PowerShell bleue :
+
+1. Vous verrez un lien comme :
+   https://vercel.com/oauth/device?user_code=XXXX-XXXX
+
+2. Appuyez sur ENTREE
+   -> Votre navigateur s'ouvrira automatiquement
+
+3. Dans le navigateur :
+   - Pas de compte ? Cliquez "Sign Up" avec GitHub
+   - Deja un compte ? Connectez-vous
+   - Autorisez Vercel CLI
+
+4. Revenez a la fenetre PowerShell
+
+ETAPE 2 : DEPLOIEMENT
+---------------------
+Une fois connecte, dans la meme fenetre PowerShell, tapez :
+
+vercel --prod --name collims --yes
+
+Puis appuyez sur ENTREE
+
+ETAPE 3 : ATTENTE (2-3 minutes)
+-------------------------------
+Vercel va :
+- Builder l'application
+- La deployer sur le CDN mondial
+
+ETAPE 4 : VOTRE LIEN !
+----------------------
+A la fin, vous verrez :
+
+✓ Production: https://collims.vercel.app
+
+COPIEZ CE LIEN ! C'est votre application en ligne !
+
+========================================
+  VOTRE APPLICATION SERA ACCESSIBLE
+  DEPUIS N'IMPORTE OU DANS LE MONDE !
+========================================
+
+Correction des bacteries incluse !
+Acces depuis PC, mobile, tablette !
+HTTPS securise automatique !
+
+
+
+
