@@ -1468,11 +1468,7 @@ const SampleEntryPage = () => {
             aspect: sample.aspect,
             ph: sample.ph,
             // Sauvegarder le commentaire laboratoire
-            lab_comment: sample.labComment || null,
-            // 🔧 CORRECTION: S'assurer que brand et site sont bien préservés
-            brand: currentBrandName || currentBrand || sample.brand || '',
-            site: site || sample.site || '',
-            report_title: finalReportTitle
+            lab_comment: sample.labComment || null
             // Date d'ensemencement gérée via form_bacteria_selections
           })
           .eq('id', sampleId);
