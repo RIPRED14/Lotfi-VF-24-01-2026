@@ -148,39 +148,28 @@ const LecturesEnAttentePage = () => {
       }
 
       // 3. Récupérer les informations des échantillons pour ces form_ids
-      // MODIFICATION : Récupérer TOUS les échantillons, pas seulement ceux en "waiting_reading"
-      // pour afficher tous les formulaires même s'ils sont encore en "analyses_en_cours"
       console.log('📊 2. Récupération des échantillons pour ces formulaires...');
       const { data: samplesData, error: samplesError } = await supabase
         .from('samples')
-        .select('form_id, report_title, brand, site, created_at, modified_at, status')
+        .select('form_id, report_title, brand, site, created_at, modified_at')
         .in('form_id', formIds)
-        // Pas de filtre sur le statut - on récupère tous les statuts
         .not('form_id', 'is', null);
 
-      console.log('📊 Échantillons trouvés (tous statuts):', samplesData?.length || 0);
-
-      // 4. Récupérer les dates d'analyse et infos depuis sample_forms
-      console.log('📅 3. Récupération des infos depuis sample_forms...');
+      // 4. Récupérer les dates d'analyse choisies depuis sample_forms
+      console.log('📅 3. Récupération des dates d\'analyse depuis sample_forms...');
       const { data: sampleFormsData, error: sampleFormsError } = await supabase
         .from('sample_forms')
-        .select('report_id, sample_date, brand_name, site, report_title')
+        .select('report_id, sample_date')
         .in('report_id', formIds);
 
-      // Créer des maps pour accéder rapidement aux infos
+      // Créer un map pour accéder rapidement aux dates
       const sampleDatesMap = new Map();
-      const sampleFormsInfoMap = new Map();
       if (sampleFormsData) {
         sampleFormsData.forEach(form => {
           sampleDatesMap.set(form.report_id, form.sample_date);
-          sampleFormsInfoMap.set(form.report_id, {
-            brand: form.brand_name,
-            site: form.site,
-            report_title: form.report_title
-          });
         });
       }
-      console.log('✅ Infos formulaires récupérées:', sampleFormsInfoMap.size);
+      console.log('✅ Dates d\'analyse récupérées:', sampleDatesMap.size);
 
       if (samplesError) {
         console.error('❌ Erreur échantillons:', samplesError);
@@ -261,14 +250,14 @@ const LecturesEnAttentePage = () => {
           }
         ];
         
-        processFormsData(testSamplesData, testBacteriaData, new Map(), new Map());
+        processFormsData(testSamplesData, testBacteriaData);
         return;
       }
 
       console.log('✅ Échantillons récupérés:', samplesData?.length || 0);
 
       // 4. Traitement des données
-      processFormsData(samplesData || [], bacteriaData || [], sampleDatesMap, sampleFormsInfoMap);
+      processFormsData(samplesData || [], bacteriaData || [], sampleDatesMap);
 
     } catch (error) {
       console.error('❌ Erreur générale:', error);
@@ -282,12 +271,11 @@ const LecturesEnAttentePage = () => {
   };
 
   // Traitement des données pour créer la structure des formulaires
-  const processFormsData = (samplesData: any[], bacteriaData: any[], sampleDatesMap?: Map<string, string>, sampleFormsInfoMap?: Map<string, any>) => {
+  const processFormsData = (samplesData: any[], bacteriaData: any[], sampleDatesMap?: Map<string, string>) => {
     console.log('🔄 Traitement des données...');
     console.log('📊 Échantillons reçus:', samplesData.length);
     console.log('🦠 Bactéries reçues:', bacteriaData.length);
     console.log('📅 Dates d\'analyse disponibles:', sampleDatesMap?.size || 0);
-    console.log('📋 Infos formulaires disponibles:', sampleFormsInfoMap?.size || 0);
     
     // D'abord, créer un mapping de tous les form_ids avec leurs bactéries
     const bacteriaByFormId = bacteriaData.reduce((acc, bacteria) => {
@@ -311,19 +299,18 @@ const LecturesEnAttentePage = () => {
 
     console.log('📋 Form IDs avec bactéries:', Object.keys(bacteriaByFormId));
 
-    // Grouper les échantillons par form_id (logique basée sur samples)
+    // Grouper les échantillons par form_id
     const formGroups = samplesData.reduce((acc, sample) => {
       const formId = sample.form_id;
       if (!acc[formId]) {
-        // Utiliser les infos directement depuis le sample (qui contient brand, site, report_title)
         acc[formId] = {
           form_id: formId,
-          report_title: sample.report_title || `Formulaire ${formId}`,
-          brand: sample.brand || 'N/A',
-          site: sample.site || 'N/A',
+          report_title: sample.report_title,
+          brand: sample.brand,
+          site: sample.site,
           created_at: sample.created_at,
           modified_at: sample.modified_at,
-          sample_date: sample.created_at,
+          sample_date: sampleDatesMap?.get(formId) || sample.created_at, // Utiliser la date d'analyse choisie
           sample_count: 0,
           bacteria_list: []
         };
@@ -333,23 +320,19 @@ const LecturesEnAttentePage = () => {
     }, {});
 
     // Ajouter les bactéries à chaque formulaire
+    // Si un formulaire n'a pas d'échantillons correspondants, créer une entrée par défaut
     Object.keys(bacteriaByFormId).forEach(formId => {
-      // Si ce formulaire n'a pas d'échantillons, créer une entrée avec les infos de sample_forms
       if (!formGroups[formId]) {
-        const formInfo = sampleFormsInfoMap?.get(formId);
-        
-        console.log(`⚠️ Formulaire ${formId} : aucun échantillon trouvé dans samples, création avec sample_forms`);
-        
-        // Créer une entrée même sans échantillon
+        // Créer une entrée par défaut si pas d'échantillon trouvé
         formGroups[formId] = {
           form_id: formId,
-          report_title: formInfo?.report_title || `Formulaire ${formId}`,
-          brand: formInfo?.brand || 'N/A',
-          site: formInfo?.site || 'N/A',
-          created_at: new Date().toISOString(),
-          modified_at: new Date().toISOString(),
-          sample_date: sampleDatesMap?.get(formId) || new Date().toISOString(),
-          sample_count: 0,
+          report_title: `Formulaire ${formId.slice(-8)}`,
+          brand: 'N/A',
+          site: 'N/A',
+          created_at: bacteriaByFormId[formId][0]?.created_at || new Date().toISOString(),
+          modified_at: bacteriaByFormId[formId][0]?.modified_at || new Date().toISOString(),
+          sample_date: sampleDatesMap?.get(formId) || (bacteriaByFormId[formId][0]?.created_at || new Date().toISOString()),
+          sample_count: 1,
           bacteria_list: []
         };
       }
@@ -368,11 +351,11 @@ const LecturesEnAttentePage = () => {
       form.bacteria_list.length > 0
     );
 
-    // FILTRER les formulaires entièrement complétés (ils sont archivés dans forms-history)
+    // FILTRER les formulaires entièrement complétés (ils doivent disparaître de cette page)
     const formsWithPendingBacteria = allProcessedForms.filter((form: any) => {
       const isFullyCompleted = isFormFullyCompleted(form);
       if (isFullyCompleted) {
-        console.log(`🎯 Formulaire ${form.form_id} entièrement complété - MASQUÉ (archivé dans forms-history)`);
+        console.log(`🎯 Formulaire ${form.form_id} entièrement complété - MASQUÉ de lectures-en-attente`);
         return false; // Ne pas afficher dans lectures-en-attente
       }
       return true; // Afficher dans lectures-en-attente

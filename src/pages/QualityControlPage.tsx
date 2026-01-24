@@ -96,6 +96,7 @@ const QualityControlPage = () => {
         return;
       }
       
+      // 1. Compter les formulaires par site (depuis samples)
       const { data: samples, error } = await supabase
         .from('samples')
         .select('form_id, site')
@@ -112,14 +113,33 @@ const QualityControlPage = () => {
       const uniqueFormsR2 = new Set(samples?.filter(s => s.site === 'R2').map(s => s.form_id) || []);
       const uniqueFormsBAIKO = new Set(samples?.filter(s => s.site === 'BAIKO').map(s => s.form_id) || []);
 
-      // Compter les formulaires en analyse et en attente de lecture
+      // 2. Compter les formulaires en "Analyse en cours" (status = 'analyses_en_cours' dans samples)
       const { data: progressSamples } = await supabase
         .from('samples')
         .select('form_id, status')
+        .eq('status', 'analyses_en_cours')
         .not('form_id', 'is', null);
 
-      const uniqueFormsInProgress = new Set(progressSamples?.filter(s => s.status === 'analyses_en_cours').map(s => s.form_id) || []);
-      const uniqueFormsAwaitingReading = new Set(progressSamples?.filter(s => s.status === 'waiting_reading').map(s => s.form_id) || []);
+      const uniqueFormsInProgress = new Set(progressSamples?.map(s => s.form_id) || []);
+
+      // 3. Compter les formulaires en "Lectures en attente" (depuis form_bacteria_selections)
+      // C'est la même logique que LecturesEnAttentePage
+      const { data: bacteriaData } = await supabase
+        .from('form_bacteria_selections')
+        .select('form_id, status')
+        .in('status', ['pending', 'late'])
+        .not('form_id', 'is', null);
+
+      // Compter les formulaires uniques avec au moins une bactérie en attente
+      const uniqueFormsAwaitingReading = new Set(bacteriaData?.map(b => b.form_id) || []);
+
+      console.log('📊 Stats calculées:', {
+        r1: uniqueFormsR1.size,
+        r2: uniqueFormsR2.size,
+        baiko: uniqueFormsBAIKO.size,
+        in_progress: uniqueFormsInProgress.size,
+        awaiting_reading: uniqueFormsAwaitingReading.size
+      });
 
       const stats: DashboardStats = {
         r1_forms: uniqueFormsR1.size,

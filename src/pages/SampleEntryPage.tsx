@@ -41,6 +41,68 @@ const SITE_MAPPING: Record<string, string> = {
   'BAIKO': 'Laiterie Baiko'
 };
 
+// Fonction pour normaliser une date vers le format AAAA-MM-JJ
+const normalizeDate = (dateString: string | null | undefined): string => {
+  if (!dateString || dateString.trim() === '') return '';
+  
+  // Nettoyer la chaîne (enlever espaces, tirets/slashes parasites à la fin)
+  let cleaned = dateString.trim().replace(/[-\/]+$/, '').trim();
+  
+  // Si déjà au bon format YYYY-MM-DD, vérifier et retourner
+  if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
+    const date = new Date(cleaned);
+    if (!isNaN(date.getTime())) return cleaned;
+  }
+  
+  // Si format YYYY/MM/DD, convertir en YYYY-MM-DD
+  if (/^\d{4}\/\d{2}\/\d{2}$/.test(cleaned)) {
+    return cleaned.replace(/\//g, '-');
+  }
+  
+  let day: number, month: number, year: number;
+  
+  // Format JJ/MM/AAAA ou JJ-MM-AAAA (français)
+  const frenchFull = cleaned.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (frenchFull) {
+    day = parseInt(frenchFull[1], 10);
+    month = parseInt(frenchFull[2], 10);
+    year = parseInt(frenchFull[3], 10);
+  }
+  // Format JJ/MM/AA ou JJ-MM-AA (français court)
+  else {
+    const frenchShort = cleaned.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2})$/);
+    if (frenchShort) {
+      day = parseInt(frenchShort[1], 10);
+      month = parseInt(frenchShort[2], 10);
+      year = parseInt(frenchShort[3], 10);
+      // Convertir année courte: 00-30 -> 2000-2030, 31-99 -> 1931-1999
+      year = year <= 30 ? 2000 + year : 1900 + year;
+    }
+    // Format AAAA/MM/JJ ou AAAA-MM-JJ (ISO)
+    else {
+      const isoFormat = cleaned.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+      if (isoFormat) {
+        year = parseInt(isoFormat[1], 10);
+        month = parseInt(isoFormat[2], 10);
+        day = parseInt(isoFormat[3], 10);
+      } else {
+        // Retourner la chaîne originale si non reconnu
+        console.warn('Format de date non reconnu:', dateString);
+        return cleaned;
+      }
+    }
+  }
+  
+  // Valider les valeurs
+  if (month < 1 || month > 12 || day < 1 || day > 31 || year < 1900 || year > 2100) {
+    console.warn('Date invalide après parsing:', dateString);
+    return cleaned;
+  }
+  
+  // Retourner au format YYYY-MM-DD
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+};
+
 const SampleEntryPage = () => {
   const { toast } = useToast();
   const location = useLocation();
@@ -244,7 +306,7 @@ const SampleEntryPage = () => {
         
         const { data: formData, error: formError } = await supabase
           .from('sample_forms')
-          .select('brand_name, site, report_title')
+          .select('site')
           .eq('report_id', currentFormId)
           .single();
 
@@ -252,13 +314,6 @@ const SampleEntryPage = () => {
           console.warn('⚠️ Impossible de charger les infos du formulaire depuis sample_forms:', formError);
         } else if (formData) {
           console.log('✅ Infos du formulaire récupérées depuis sample_forms:', formData);
-          
-          // Mettre à jour les états locaux si les infos sont disponibles
-          if (formData.brand_name && (!currentBrand || currentBrand === '')) {
-            console.log('🔄 Mise à jour du brand depuis sample_forms:', formData.brand_name);
-            setCurrentBrand(formData.brand_name);
-            setCurrentBrandName(formData.brand_name);
-          }
           
           if (formData.site && (!site || site === '')) {
             console.log('🔄 Mise à jour du site depuis sample_forms:', formData.site);
@@ -714,15 +769,13 @@ const SampleEntryPage = () => {
       // Pas besoin de les sauvegarder à nouveau ici
       console.log('✅ Bactéries déjà sauvegardées automatiquement par le hook');
 
-      // 3.5 📋 Créer/Mettre à jour l'entrée dans sample_forms
+      // 3.5 📋 Créer/Mettre à jour l'entrée dans sample_forms (colonnes existantes uniquement)
       const sampleDateToSave = samples[0]?.fabrication || sampleDate || new Date().toISOString().split('T')[0];
       const finalReportTitle = reportTitle || (currentBrandName ? `Formulaire contrôle microbiologique – ${currentBrandName}` : `Formulaire du ${new Date().toLocaleDateString('fr-FR')}`);
       
       console.log('📝 Enregistrement dans sample_forms:', {
         report_id: formId,
-        brand_name: currentBrandName || currentBrand,
         site: site,
-        report_title: finalReportTitle,
         sample_date: sampleDateToSave
       });
 
@@ -730,11 +783,9 @@ const SampleEntryPage = () => {
         .from('sample_forms')
         .upsert({
           report_id: formId,
-          brand_name: currentBrandName || currentBrand || '',
           site: site || '',
           sample_date: sampleDateToSave,
           reference: reference || '',
-          report_title: finalReportTitle,
           created_by: user?.id
         }, {
           onConflict: 'report_id'
@@ -763,8 +814,8 @@ const SampleEntryPage = () => {
         site: site || sample.site || '', // 🔧 CORRECTION: Utiliser site du state si dispo
         of_value: sample.of_value || '', // 🔧 AJOUT: Champ OF manquant
         ready_time: sample.readyTime || '',
-        fabrication: sample.fabrication || '',
-        dlc: sample.dlc || '',
+        fabrication: normalizeDate(sample.fabrication), // 🔧 NORMALISATION: Format AAAA-MM-JJ
+        dlc: normalizeDate(sample.dlc), // 🔧 NORMALISATION: Format AAAA-MM-JJ
         aj_dlc: sample.ajDlc || '',
         smell: sample.smell || '',
         texture: sample.texture || '',
@@ -1016,9 +1067,7 @@ const SampleEntryPage = () => {
       
       console.log('📝 Enregistrement immédiat dans sample_forms lors de l\'ajout du premier échantillon:', {
         report_id: formIdToUse,
-        brand_name: currentBrandName || brandName || currentBrand || brand,
         site: site,
-        report_title: finalReportTitle,
         sample_date: sampleDateToSave
       });
 
@@ -1026,11 +1075,9 @@ const SampleEntryPage = () => {
         .from('sample_forms')
         .upsert({
           report_id: formIdToUse,
-          brand_name: currentBrandName || brandName || currentBrand || brand || '',
           site: site || '',
           sample_date: sampleDateToSave,
           reference: sampleReference || '',
-          report_title: finalReportTitle,
           created_by: user?.id
         }, {
           onConflict: 'report_id'
@@ -1210,27 +1257,23 @@ const SampleEntryPage = () => {
       
       console.log('📤 Envoi aux analyses en cours avec formId:', formId);
 
-      // 📋 ÉTAPE 1 : Créer/Mettre à jour l'entrée dans sample_forms
-      const sampleDate = samples[0]?.fabrication || sampleDate || currentDate.toISOString().split('T')[0];
+      // 📋 ÉTAPE 1 : Créer/Mettre à jour l'entrée dans sample_forms (colonnes existantes uniquement)
+      const sampleDateToSave = samples[0]?.fabrication || sampleDate || currentDate.toISOString().split('T')[0];
       const finalReportTitle = reportTitle || (currentBrandName ? `Formulaire contrôle microbiologique – ${currentBrandName}` : `Formulaire du ${new Date().toLocaleDateString('fr-FR')}`);
       
       console.log('📝 Enregistrement dans sample_forms:', {
         report_id: formId,
-        brand_name: currentBrandName || currentBrand,
         site: site,
-        report_title: finalReportTitle,
-        sample_date: sampleDate
+        sample_date: sampleDateToSave
       });
 
       const { error: formError } = await supabase
         .from('sample_forms')
         .upsert({
           report_id: formId,
-          brand_name: currentBrandName || currentBrand || '',
           site: site || '',
-          sample_date: sampleDate,
+          sample_date: sampleDateToSave,
           reference: reference || '',
-          report_title: finalReportTitle,
           created_by: user?.id
         }, {
           onConflict: 'report_id'
@@ -1451,7 +1494,17 @@ const SampleEntryPage = () => {
       // 2. Les bactéries sont déjà sauvegardées automatiquement par le hook
       console.log('✅ Bactéries déjà sauvegardées automatiquement:', selectedBacteria);
 
-      // 3. Mettre à jour chaque échantillon avec les informations de lecture
+      // 3. Préparer le titre du rapport
+      const finalReportTitle = reportTitle || (currentBrandName || brandName ? `Formulaire contrôle microbiologique – ${currentBrandName || brandName}` : `Formulaire du ${new Date().toLocaleDateString('fr-FR')}`);
+      const brandToSave = currentBrandName || brandName || currentBrand || '';
+      
+      console.log('📋 Données à sauvegarder dans samples:', {
+        brand: brandToSave,
+        site: site,
+        report_title: finalReportTitle
+      });
+
+      // 4. Mettre à jour chaque échantillon avec les informations de lecture + brand/site/report_title
       for (const sample of samples) {
         const sampleId = typeof sample.id === 'number' ? String(sample.id) : sample.id;
 
@@ -1461,6 +1514,10 @@ const SampleEntryPage = () => {
             status: 'waiting_reading',
             modified_at: currentDate.toISOString(),
             modified_by: user?.name || 'Technicien',
+            // Sauvegarder brand, site, report_title pour LecturesEnAttentePage
+            brand: brandToSave,
+            site: site || sample.site || '',
+            report_title: finalReportTitle,
             // Sauvegarder les valeurs des 5 cases vertes
             smell: sample.smell,
             texture: sample.texture,
@@ -1476,15 +1533,12 @@ const SampleEntryPage = () => {
         if (error) throw error;
       }
 
-      // 3.5 📋 Enregistrer/Mettre à jour dans sample_forms pour "Lectures en attente"
+      // 5. 📋 Enregistrer/Mettre à jour dans sample_forms pour "Lectures en attente" (colonnes existantes uniquement)
       const sampleDateToSave = samples[0]?.fabrication || sampleDate || currentDate.toISOString().split('T')[0];
-      const finalReportTitle = reportTitle || (currentBrandName || brandName ? `Formulaire contrôle microbiologique – ${currentBrandName || brandName}` : `Formulaire du ${new Date().toLocaleDateString('fr-FR')}`);
       
       console.log('📝 Enregistrement dans sample_forms pour lectures en attente:', {
         report_id: sampleFormId,
-        brand_name: currentBrandName || currentBrand || samples[0]?.brand,
         site: site || samples[0]?.site,
-        report_title: finalReportTitle,
         sample_date: sampleDateToSave
       });
 
@@ -1492,11 +1546,9 @@ const SampleEntryPage = () => {
         .from('sample_forms')
         .upsert({
           report_id: sampleFormId,
-          brand_name: currentBrandName || currentBrand || samples[0]?.brand || '',
           site: site || samples[0]?.site || '',
           sample_date: sampleDateToSave,
           reference: reference || '',
-          report_title: finalReportTitle,
           created_by: user?.id
         }, {
           onConflict: 'report_id'

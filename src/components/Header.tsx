@@ -27,6 +27,16 @@ const Header: React.FC<HeaderProps> = ({ title = "Contrôle Qualité Microbiolog
     navigate('/');
   };
 
+  // Déconnexion complète (retour à la page d'authentification)
+  const handleFullLogout = () => {
+    logout();
+    // Supprimer l'authentification globale
+    sessionStorage.removeItem('collims_auth');
+    sessionStorage.removeItem('collims_auth_time');
+    // Recharger la page pour revenir à l'écran de connexion
+    window.location.href = '/';
+  };
+
   const menuItems = [
     { icon: <Home className="w-4 h-4 mr-2" />, label: 'Accueil', path: '/' },
     { icon: <CheckCircle className="w-4 h-4 mr-2" />, label: 'Contrôle Qualité', path: '/quality-control' },
@@ -125,7 +135,11 @@ const Header: React.FC<HeaderProps> = ({ title = "Contrôle Qualité Microbiolog
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
-                <span>Déconnexion</span>
+                <span>Changer de profil</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleFullLogout} className="text-red-600 focus:text-red-600 focus:bg-red-50">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Déconnexion complète</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

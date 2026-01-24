@@ -62,11 +62,11 @@ const AnalysisInProgressPage: React.FC = () => {
       // Récupérer les form_ids uniques
       const formIds = [...new Set(data?.map(s => s.form_id).filter(Boolean) || [])];
       
-      // Récupérer les infos depuis sample_forms
+      // Récupérer les infos depuis sample_forms (colonnes existantes uniquement)
       console.log('📅 Récupération des infos depuis sample_forms pour', formIds.length, 'formulaires...');
       const { data: sampleFormsData } = await supabase
         .from('sample_forms')
-        .select('report_id, brand_name, site, sample_date')
+        .select('report_id, site, sample_date')
         .in('report_id', formIds);
 
       // Créer une map pour accéder rapidement aux infos
@@ -74,7 +74,6 @@ const AnalysisInProgressPage: React.FC = () => {
       if (sampleFormsData) {
         sampleFormsData.forEach(form => {
           sampleFormsInfoMap.set(form.report_id, {
-            brand: form.brand_name,
             site: form.site,
             sample_date: form.sample_date
           });
@@ -92,7 +91,7 @@ const AnalysisInProgressPage: React.FC = () => {
           acc[formId] = {
             form_id: formId,
             report_title: sample.report_title || `Formulaire ${formId}`,
-            brand: sample.brand || formInfo?.brand || 'Non spécifié',
+            brand: sample.brand || 'Non spécifié',
             site: sample.site || formInfo?.site || 'Non spécifié',
             sample_count: 0,
             created_at: sample.created_at,

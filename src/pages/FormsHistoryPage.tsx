@@ -33,6 +33,95 @@ import {
 } from "@/components/ui/alert-dialog";
 import ExcelJS from 'exceljs';
 
+// Fonction pour normaliser une date vers le format AAAA-MM-JJ
+const normalizeDate = (dateString: string | null | undefined): string | null => {
+  if (!dateString || dateString.trim() === '') return null;
+  
+  // Nettoyer la chaîne (enlever espaces, tirets parasites à la fin)
+  let cleaned = dateString.trim().replace(/[-\/]+$/, '').trim();
+  
+  // Si déjà au bon format YYYY-MM-DD, vérifier et retourner
+  if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
+    const date = new Date(cleaned);
+    if (!isNaN(date.getTime())) return cleaned;
+  }
+  
+  // Si format YYYY/MM/DD, convertir en YYYY-MM-DD
+  if (/^\d{4}\/\d{2}\/\d{2}$/.test(cleaned)) {
+    const converted = cleaned.replace(/\//g, '-');
+    const date = new Date(converted);
+    if (!isNaN(date.getTime())) return converted;
+  }
+  
+  let day: number, month: number, year: number;
+  
+  // Format JJ/MM/AAAA ou JJ-MM-AAAA (français)
+  const frenchFull = cleaned.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (frenchFull) {
+    day = parseInt(frenchFull[1], 10);
+    month = parseInt(frenchFull[2], 10);
+    year = parseInt(frenchFull[3], 10);
+  }
+  // Format JJ/MM/AA ou JJ-MM-AA (français court)
+  else {
+    const frenchShort = cleaned.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2})$/);
+    if (frenchShort) {
+      day = parseInt(frenchShort[1], 10);
+      month = parseInt(frenchShort[2], 10);
+      year = parseInt(frenchShort[3], 10);
+      // Convertir année courte: 00-30 -> 2000-2030, 31-99 -> 1931-1999
+      year = year <= 30 ? 2000 + year : 1900 + year;
+    }
+    // Format AAAA/MM/JJ ou AAAA-MM-JJ (ISO)
+    else {
+      const isoFormat = cleaned.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+      if (isoFormat) {
+        year = parseInt(isoFormat[1], 10);
+        month = parseInt(isoFormat[2], 10);
+        day = parseInt(isoFormat[3], 10);
+      } else {
+        // Dernier recours: essayer Date.parse
+        const parsed = Date.parse(cleaned);
+        if (!isNaN(parsed)) {
+          const d = new Date(parsed);
+          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+        console.warn('Format de date non reconnu:', dateString);
+        return null;
+      }
+    }
+  }
+  
+  // Valider les valeurs
+  if (month < 1 || month > 12 || day < 1 || day > 31 || year < 1900 || year > 2100) {
+    console.warn('Date invalide après parsing:', dateString, { day, month, year });
+    return null;
+  }
+  
+  // Retourner au format YYYY-MM-DD
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+};
+
+// Fonction pour formater une date pour l'affichage (JJ/MM/AAAA)
+const formatDateForDisplay = (dateString: string | null | undefined): string => {
+  const normalized = normalizeDate(dateString);
+  if (!normalized) return 'Non spécifiée';
+  
+  try {
+    const date = new Date(normalized);
+    if (isNaN(date.getTime())) return 'Date invalide';
+    return format(date, 'dd/MM/yyyy', { locale: fr });
+  } catch {
+    return 'Erreur date';
+  }
+};
+
+// Fonction pour formater une date pour Excel (AAAA-MM-JJ)
+const formatDateForExcel = (dateString: string | null | undefined): string => {
+  const normalized = normalizeDate(dateString);
+  return normalized || 'Non spécifiée';
+};
+
 interface FormEntry {
   id: string;
   title: string;
@@ -536,7 +625,7 @@ const FormsHistoryPage = () => {
         const row = summaryWorksheet.addRow({
           title: form.title,
           date: format(new Date(form.date), 'dd/MM/yyyy HH:mm', { locale: fr }),
-          fabrication: form.fabrication ? format(new Date(form.fabrication), 'dd/MM/yyyy', { locale: fr }) : 'Non spécifiée',
+          fabrication: formatDateForExcel(form.fabrication),
           brand: getBrandName(form.brand),
           site: form.site,
           analysisType: form.analysisType || 'Analyse initiale',
@@ -573,7 +662,7 @@ const FormsHistoryPage = () => {
               site: form.site,
               brand: getBrandName(form.brand),
               created_at: format(new Date(form.date), 'dd/MM/yyyy HH:mm', { locale: fr }),
-              fabrication: form.fabrication ? format(new Date(form.fabrication), 'dd/MM/yyyy', { locale: fr }) : 'Non spécifiée',
+              fabrication: formatDateForExcel(form.fabrication),
               ...sample
             });
           });
@@ -978,25 +1067,12 @@ const FormsHistoryPage = () => {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {form.fabrication ? (
-                            <div className="flex items-center gap-1 text-gray-600">
-                              <Calendar className="h-3 w-3" />
-                              {(() => {
-                                try {
-                                  const date = new Date(form.fabrication);
-                                  if (isNaN(date.getTime())) {
-                                    return <span className="text-red-500 text-xs">Date invalide</span>;
-                                  }
-                                  return format(date, 'dd/MM/yyyy', { locale: fr });
-                                } catch (error) {
-                                  console.error('Erreur formatage date:', form.fabrication, error);
-                                  return <span className="text-red-500 text-xs">Erreur date</span>;
-                                }
-                              })()}
-                            </div>
-                          ) : (
-                            <span className="text-gray-400 text-sm">Non spécifiée</span>
-                          )}
+                          <div className="flex items-center gap-1 text-gray-600">
+                            <Calendar className="h-3 w-3" />
+                            <span className={!normalizeDate(form.fabrication) ? 'text-gray-400 text-sm' : ''}>
+                              {formatDateForDisplay(form.fabrication)}
+                            </span>
+                          </div>
                         </TableCell>
                         <TableCell>{getBrandName(form.brand)}</TableCell>
                         <TableCell>{form.site}</TableCell>
