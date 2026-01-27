@@ -6,7 +6,7 @@ import Header from '@/components/Header';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Eye, Clock, Calendar, ArrowLeft, Filter, Search, Download, Building, Tag, Trash2 } from 'lucide-react';
-import { 
+import {
   Table,
   TableBody,
   TableCell,
@@ -36,25 +36,25 @@ import ExcelJS from 'exceljs';
 // Fonction pour normaliser une date vers le format AAAA-MM-JJ
 const normalizeDate = (dateString: string | null | undefined): string | null => {
   if (!dateString || dateString.trim() === '') return null;
-  
+
   // Nettoyer la chaîne (enlever espaces, tirets parasites à la fin)
   let cleaned = dateString.trim().replace(/[-\/]+$/, '').trim();
-  
+
   // Si déjà au bon format YYYY-MM-DD, vérifier et retourner
   if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
     const date = new Date(cleaned);
     if (!isNaN(date.getTime())) return cleaned;
   }
-  
+
   // Si format YYYY/MM/DD, convertir en YYYY-MM-DD
   if (/^\d{4}\/\d{2}\/\d{2}$/.test(cleaned)) {
     const converted = cleaned.replace(/\//g, '-');
     const date = new Date(converted);
     if (!isNaN(date.getTime())) return converted;
   }
-  
+
   let day: number, month: number, year: number;
-  
+
   // Format JJ/MM/AAAA ou JJ-MM-AAAA (français)
   const frenchFull = cleaned.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
   if (frenchFull) {
@@ -91,13 +91,13 @@ const normalizeDate = (dateString: string | null | undefined): string | null => 
       }
     }
   }
-  
+
   // Valider les valeurs
   if (month < 1 || month > 12 || day < 1 || day > 31 || year < 1900 || year > 2100) {
     console.warn('Date invalide après parsing:', dateString, { day, month, year });
     return null;
   }
-  
+
   // Retourner au format YYYY-MM-DD
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 };
@@ -106,7 +106,7 @@ const normalizeDate = (dateString: string | null | undefined): string | null => 
 const formatDateForDisplay = (dateString: string | null | undefined): string => {
   const normalized = normalizeDate(dateString);
   if (!normalized) return 'Non spécifiée';
-  
+
   try {
     const date = new Date(normalized);
     if (isNaN(date.getTime())) return 'Date invalide';
@@ -154,10 +154,10 @@ const FormsHistoryPage = () => {
   const formatDateInput = (value: string): string => {
     // Supprimer tout ce qui n'est pas un chiffre
     const numbers = value.replace(/\D/g, '');
-    
+
     // Limiter à 8 chiffres (JJMMAAAA)
     const limited = numbers.substring(0, 8);
-    
+
     // Ajouter les / automatiquement
     if (limited.length >= 5) {
       return `${limited.substring(0, 2)}/${limited.substring(2, 4)}/${limited.substring(4)}`;
@@ -171,17 +171,17 @@ const FormsHistoryPage = () => {
   // Fonction pour convertir le format JJ/MM/AAAA vers AAAA-MM-JJ
   const parseInputDate = (inputDate: string): string | null => {
     if (!inputDate || inputDate.length !== 10) return null;
-    
+
     const parts = inputDate.split('/');
     if (parts.length !== 3) return null;
-    
+
     const day = parts[0].padStart(2, '0');
     const month = parts[1].padStart(2, '0');
     const year = parts[2];
-    
+
     // Validation basique
     if (year.length !== 4 || parseInt(month) > 12 || parseInt(day) > 31 || parseInt(month) < 1 || parseInt(day) < 1) return null;
-    
+
     return `${year}-${month}-${day}`;
   };
 
@@ -198,27 +198,27 @@ const FormsHistoryPage = () => {
     // Filtre par intervalle de date de création
     const startDate = startDateFilter.trim() ? parseInputDate(startDateFilter) : null;
     const endDate = endDateFilter.trim() ? parseInputDate(endDateFilter) : null;
-    
+
     if (startDate || endDate) {
       filteredForms = filteredForms.filter(form => {
         if (!form.date) return false;
         const formDate = form.date.split('T')[0]; // AAAA-MM-JJ
-        
+
         // Si seulement date début : formulaires >= date début
         if (startDate && !endDate) {
           return formDate >= startDate;
         }
-        
+
         // Si seulement date fin : formulaires <= date fin
         if (!startDate && endDate) {
           return formDate <= endDate;
         }
-        
+
         // Si les deux dates : formulaires entre les deux (intervalle fermé)
         if (startDate && endDate) {
           return formDate >= startDate && formDate <= endDate;
         }
-        
+
         return true;
       });
     }
@@ -262,18 +262,55 @@ const FormsHistoryPage = () => {
     setBrandFilter('all'); // Réinitialiser le filtre marque
   };
 
+  // Fonction helper pour récupérer TOUS les enregistrements avec pagination (dépasse la limite de 1000)
+  const fetchAllRecords = async (table: string, selectFields: string, filters?: { eq?: Record<string, any>, in?: { field: string, values: string[] } }) => {
+    let allRecords: any[] = [];
+    let from = 0;
+    const batchSize = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      let query = supabase.from(table).select(selectFields).range(from, from + batchSize - 1);
+
+      // Appliquer les filtres
+      if (filters?.eq) {
+        for (const [field, value] of Object.entries(filters.eq)) {
+          query = query.eq(field, value);
+        }
+      }
+      if (filters?.in) {
+        query = query.in(filters.in.field, filters.in.values);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error(`Erreur pagination ${table}:`, error.message);
+        return { data: allRecords, error };
+      }
+
+      if (data && data.length > 0) {
+        allRecords = allRecords.concat(data);
+        from += batchSize;
+        hasMore = data.length === batchSize;
+      } else {
+        hasMore = false;
+      }
+    }
+
+    return { data: allRecords, error: null };
+  };
+
   const loadFormsHistory = async () => {
     try {
       setLoading(true);
-      
+
       // 1. Récupérer tous les formulaires avec des bactéries complétées
       console.log('🔍 Chargement des formulaires pour l\'historique...');
-      
-      // D'abord récupérer toutes les bactéries
-      const { data: bacteriaData, error: bacteriaError } = await supabase
-        .from('form_bacteria_selections')
-        .select('*');
-        
+
+      // D'abord récupérer toutes les bactéries (avec pagination pour dépasser la limite de 1000)
+      const { data: bacteriaData, error: bacteriaError } = await fetchAllRecords('form_bacteria_selections', '*');
+
       if (bacteriaError) {
         console.error("Erreur lors du chargement des bactéries:", bacteriaError);
         toast({
@@ -287,7 +324,7 @@ const FormsHistoryPage = () => {
       }
 
       // Grouper les bactéries par form_id et identifier les formulaires entièrement complétés
-      const bacteriaByFormId = bacteriaData?.reduce((acc, bacteria) => {
+      const bacteriaByFormId = bacteriaData?.reduce((acc: Record<string, any[]>, bacteria: any) => {
         const formId = bacteria.form_id;
         if (!acc[formId]) {
           acc[formId] = [];
@@ -298,28 +335,20 @@ const FormsHistoryPage = () => {
 
       // Trouver les formulaires où toutes les bactéries sont complétées
       const fullyCompletedFormIds = Object.entries(bacteriaByFormId)
-        .filter(([formId, bacteriaList]: [string, any[]]) => 
+        .filter(([formId, bacteriaList]: [string, any[]]) =>
           bacteriaList.length > 0 && bacteriaList.every(bacteria => bacteria.status === 'completed')
         )
         .map(([formId]) => formId);
 
       console.log('📋 Formulaires entièrement complétés:', fullyCompletedFormIds.length);
 
-      // 2. Récupérer les échantillons archivés ET les formulaires entièrement complétés
-      const { data: archivedData, error: archivedError } = await supabase
-        .from('samples')
-        .select('*')
-        .eq('status', 'archived')
-        .order('created_at', { ascending: false });
+      // 2. Récupérer les échantillons archivés ET les formulaires entièrement complétés (avec pagination)
+      const { data: archivedData, error: archivedError } = await fetchAllRecords('samples', '*', { eq: { status: 'archived' } });
 
-      const { data: completedFormsData, error: completedError } = fullyCompletedFormIds.length > 0 
-        ? await supabase
-            .from('samples')
-            .select('*')
-            .in('form_id', fullyCompletedFormIds)
-            .order('created_at', { ascending: false })
+      const { data: completedFormsData, error: completedError } = fullyCompletedFormIds.length > 0
+        ? await fetchAllRecords('samples', '*', { in: { field: 'form_id', values: fullyCompletedFormIds } })
         : { data: [], error: null };
-        
+
       if (archivedError || completedError) {
         console.error("Erreur lors du chargement des formulaires:", archivedError || completedError);
         toast({
@@ -331,7 +360,7 @@ const FormsHistoryPage = () => {
         setLoading(false);
         return;
       }
-      
+
       // Combiner les données archivées et les formulaires complétés
       const allHistoryData = [
         ...(archivedData || []),
@@ -339,24 +368,24 @@ const FormsHistoryPage = () => {
       ];
 
       // Supprimer les doublons basés sur l'ID
-      const uniqueHistoryData = allHistoryData.filter((item, index, self) => 
+      const uniqueHistoryData = allHistoryData.filter((item, index, self) =>
         index === self.findIndex(t => t.id === item.id)
       );
-      
+
       console.log("Données d'historique combinées:", uniqueHistoryData.length);
-      
+
       // Regrouper les données par formulaire
       const formMap = new Map<string, FormEntry>();
-      
+
       if (uniqueHistoryData && uniqueHistoryData.length > 0) {
         // Afficher tous les form_id pour déboguer
         console.log("Tous les form_id trouvés:", uniqueHistoryData.map(item => item.form_id));
-        
+
         // Premier passage pour collecter les informations de base
         uniqueHistoryData.forEach(item => {
           if (item.form_id) {
             console.log("Traitement form_id:", item.form_id, "Type:", typeof item.form_id);
-            
+
             if (!formMap.has(item.form_id)) {
               // Créer une nouvelle entrée de formulaire
               formMap.set(item.form_id, {
@@ -385,15 +414,15 @@ const FormsHistoryPage = () => {
       } else {
         console.log("Aucun échantillon trouvé dans l'historique");
       }
-      
+
       // Convertir la Map en tableau pour l'affichage
-      const formsList = Array.from(formMap.values()).sort((a, b) => 
+      const formsList = Array.from(formMap.values()).sort((a, b) =>
         new Date(b.date).getTime() - new Date(a.date).getTime()
       );
       setForms(formsList);
-      
+
       console.log("✅ Historique des formulaires chargé:", formsList.length);
-      
+
       if (formsList.length === 0) {
         toast({
           title: "Information",
@@ -418,10 +447,10 @@ const FormsHistoryPage = () => {
   const createTestSample = async () => {
     try {
       setLoading(true);
-      
+
       // Créer un form_id unique
       const testFormId = `test-form-${new Date().toISOString().split('T')[0]}-${Math.random().toString(36).substring(2, 7)}`;
-      
+
       // Créer un échantillon de test
       const testSample = {
         number: '01',
@@ -445,15 +474,15 @@ const FormsHistoryPage = () => {
         form_id: testFormId, // Ceci est important pour le test
         report_title: `Formulaire test ${new Date().toLocaleTimeString()}`
       };
-      
+
       console.log("Création d'un échantillon de test avec form_id:", testFormId);
-      
+
       // Insérer dans Supabase
       const { data, error } = await supabase
         .from('samples')
         .insert([testSample])
         .select();
-        
+
       if (error) {
         console.error("Erreur lors de la création de l'échantillon de test:", error);
         toast({
@@ -469,7 +498,7 @@ const FormsHistoryPage = () => {
           description: "Échantillon de test créé avec ID de formulaire: " + testFormId,
           duration: 5000
         });
-        
+
         // Recharger la liste des formulaires
         await loadFormsHistory();
       }
@@ -573,8 +602,8 @@ const FormsHistoryPage = () => {
   };
 
   const getBrandName = (brand: string): string => {
-    switch(brand) {
-      case '1': 
+    switch (brand) {
+      case '1':
       case 'grand_frais': return 'Grand Frais';
       case '2': return "L'Atelier Dessy";
       case '3': return 'BAIKO';
@@ -596,7 +625,7 @@ const FormsHistoryPage = () => {
     try {
       setLoading(true);
       const workbook = new ExcelJS.Workbook();
-      
+
       // FEUILLE 1: Liste des formulaires
       const summaryWorksheet = workbook.addWorksheet('Liste des Formulaires');
       summaryWorksheet.columns = [
@@ -644,7 +673,7 @@ const FormsHistoryPage = () => {
 
       // FEUILLE 2: Détails des échantillons
       const detailsWorksheet = workbook.addWorksheet('Détails des Échantillons');
-      
+
       // Configuration dynamique des colonnes (seulement celles avec des données)
       const allSamples: any[] = [];
       for (const form of formsToExport) {
@@ -720,7 +749,7 @@ const FormsHistoryPage = () => {
       ];
 
       // Filtrer les colonnes qui ont au moins une valeur non vide (incluant 0)
-      const columnsWithData = availableColumns.filter(col => 
+      const columnsWithData = availableColumns.filter(col =>
         allSamples.some(sample => {
           const value = sample[col.key];
           return value !== null && value !== undefined && value !== '' && value !== 'null' && value !== 'undefined';
@@ -745,7 +774,7 @@ const FormsHistoryPage = () => {
         const rowData: any = {};
         columnsWithData.forEach(col => {
           let value = sample[col.key];
-          
+
           // Afficher les valeurs 0 correctement (ne pas les remplacer par des chaînes vides)
           if (value === 0) {
             rowData[col.key] = 0;
@@ -785,7 +814,7 @@ const FormsHistoryPage = () => {
       // Générer le fichier
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      
+
       // Télécharger le fichier
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -818,11 +847,11 @@ const FormsHistoryPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header 
-        title="Historique des formulaires" 
-        hideMenuItems={['Lectures en Attente', 'Historique', 'Formulaires', 'Administration']} 
+      <Header
+        title="Historique des formulaires"
+        hideMenuItems={['Lectures en Attente', 'Historique', 'Formulaires', 'Administration']}
       />
-      
+
       <main className="container mx-auto px-4 py-8">
         <Card className="bg-white rounded-lg shadow">
           <CardHeader className="pb-3">
@@ -859,7 +888,7 @@ const FormsHistoryPage = () => {
                 {/* ❌ Boutons "Rafraîchir" et "Créer test" supprimés comme demandé */}
               </div>
             </div>
-            
+
             {/* Section de filtrage */}
             <div className="space-y-4 mt-4 p-4 bg-gray-50 rounded-lg border">
               {/* Filtres principaux */}
@@ -873,9 +902,8 @@ const FormsHistoryPage = () => {
                     placeholder="JJ/MM/AAAA"
                     value={startDateFilter}
                     onChange={(e) => setStartDateFilter(formatDateInput(e.target.value))}
-                    className={`w-[120px] text-center ${
-                      !isValidDateFormat(startDateFilter) ? 'border-red-300 bg-red-50' : ''
-                    }`}
+                    className={`w-[120px] text-center ${!isValidDateFormat(startDateFilter) ? 'border-red-300 bg-red-50' : ''
+                      }`}
                     maxLength={10}
                   />
                   <span className="text-sm font-medium text-gray-700">jusqu'au :</span>
@@ -884,9 +912,8 @@ const FormsHistoryPage = () => {
                     placeholder="JJ/MM/AAAA"
                     value={endDateFilter}
                     onChange={(e) => setEndDateFilter(formatDateInput(e.target.value))}
-                    className={`w-[120px] text-center ${
-                      !isValidDateFormat(endDateFilter) ? 'border-red-300 bg-red-50' : ''
-                    }`}
+                    className={`w-[120px] text-center ${!isValidDateFormat(endDateFilter) ? 'border-red-300 bg-red-50' : ''
+                      }`}
                     maxLength={10}
                   />
                 </div>
@@ -927,30 +954,30 @@ const FormsHistoryPage = () => {
               </div>
 
               {/* Message d'aide pour le format de date */}
-              {((startDateFilter.trim() && !isValidDateFormat(startDateFilter)) || 
+              {((startDateFilter.trim() && !isValidDateFormat(startDateFilter)) ||
                 (endDateFilter.trim() && !isValidDateFormat(endDateFilter))) && (
-                <div className="text-xs text-red-600">
-                  Format: JJ/MM/AAAA (ex: 15/09/2025)
-                </div>
-              )}
+                  <div className="text-xs text-red-600">
+                    Format: JJ/MM/AAAA (ex: 15/09/2025)
+                  </div>
+                )}
 
               {/* Indicateurs de filtrage actif et bouton reset */}
               {(startDateFilter.trim() || endDateFilter.trim() || siteFilter !== 'all' || brandFilter !== 'all') && (
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-medium text-gray-700">Filtres actifs:</span>
-                  
+
                   {(startDateFilter.trim() || endDateFilter.trim()) && (
                     <Badge variant="secondary" className="bg-blue-100 text-blue-800">
                       Date: {startDateFilter && `de ${startDateFilter}`} {endDateFilter && `jusqu'au ${endDateFilter}`}
                     </Badge>
                   )}
-                  
+
                   {siteFilter !== 'all' && (
                     <Badge variant="secondary" className="bg-green-100 text-green-800">
                       Site: {siteFilter}
                     </Badge>
                   )}
-                  
+
                   {brandFilter !== 'all' && (
                     <Badge variant="secondary" className="bg-purple-100 text-purple-800">
                       Marque: {getBrandName(brandFilter)}
@@ -974,7 +1001,7 @@ const FormsHistoryPage = () => {
               )}
             </div>
           </CardHeader>
-          
+
           <CardContent>
             {loading ? (
               <div className="space-y-4">
