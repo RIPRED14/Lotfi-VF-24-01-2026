@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
   RefreshCw, AlertTriangle, Filter, Eye, XCircle, 
-  FileText, Beaker, Building, Calendar
+  FileText, Beaker, Building, Calendar, CheckCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -57,52 +57,6 @@ const fetchAllRecords = async (table: string, selectFields: string, filters?: { 
   return { data: allRecords, error: null };
 };
 
-// Seuils bactériologiques par produit (même logique que ReadingResultsPage)
-const BACTERIA_THRESHOLDS: Record<string, Record<string, number>> = {
-  "Fromage pasteurises (FP)": {
-    "Escherichia coli": 100,
-    "Staphylocoques": 10,
-    "Levures/Moisissures (5j)": 5000
-  },
-  "LAIT": {
-    "Flore totales": 300000
-  },
-  "GYMA 0%": {
-    "Entérobactéries": 10,
-    "Levures/Moisissures (5j)": 100
-  },
-  "Grand Frais": {
-    "Entérobactéries": 10,
-    "Levures/Moisissures (5j)": 100
-  },
-  "Créme Dessert Collet": {
-    "Entérobactéries": 10,
-    "Levures/Moisissures (5j)": 100
-  },
-  "Aliments Sante (AS)": {
-    "Flore totales": 10
-  },
-  "Dessert végétal non fermenté": {
-    "Flore totales": 1000,
-    "Entérobactéries": 10,
-    "Levures/Moisissures (5j)": 100
-  },
-  "Eaux de rincage": {
-    "Flore totales": 10,
-    "Entérobactéries": 1,
-    "Levures/Moisissures (5j)": 10
-  },
-  "Mains": {
-    "Flore totales": 51,
-    "Entérobactéries": 0
-  },
-  "Materiel": {
-    "Flore totales": 30,
-    "Entérobactéries": 1,
-    "Levures/Moisissures (5j)": 10
-  }
-};
-
 // Mapping entre nom de bactérie et champ dans la table samples
 const BACTERIA_FIELD_MAPPING: Record<string, string> = {
   "Entérobactéries": "enterobacteria_count",
@@ -112,6 +66,7 @@ const BACTERIA_FIELD_MAPPING: Record<string, string> = {
   "Listeria": "listeria_count",
   "Levures/Moisissures (3j)": "yeast_mold_3j_count",
   "Levures/Moisissures (5j)": "yeast_mold_5j_count",
+  "Levures/Moisissures": "yeast_mold_count",
   "Flore totales": "total_flora_count",
   "Leuconostoc": "leuconostoc_count"
 };
@@ -126,6 +81,8 @@ interface NonConformForm {
   non_conform_bacteria: NonConformBacteria[];
   created_at: string;
   sample_date?: string;
+  total_bacteria: number;
+  completed_bacteria: number;
 }
 
 // Interface pour les bactéries non conformes
@@ -181,8 +138,58 @@ const NonConformitesPage = () => {
       return supabaseThreshold.max_value || supabaseThreshold.min_value;
     }
     
-    // 2. Fallback vers les seuils codés en dur
-    const productThresholdsHardcoded = BACTERIA_THRESHOLDS[brand];
+    // 2. Seuils codés en dur par produit
+    const hardcodedThresholds: Record<string, Record<string, number>> = {
+      "Fromage pasteurise (FP)": {
+        "Escherichia coli": 100,
+        "Staphylocoques": 10,
+        "Levures/Moisissures (5j)": 5000
+      },
+      "Fromage pasteurises (FP)": {
+        "Escherichia coli": 100,
+        "Staphylocoques": 10,
+        "Levures/Moisissures (5j)": 5000
+      },
+      "LAIT": {
+        "Flore totales": 300000
+      },
+      "GYMA 0%": {
+        "Entérobactéries": 10,
+        "Levures/Moisissures (5j)": 100
+      },
+      "Grand Frais": {
+        "Entérobactéries": 10,
+        "Levures/Moisissures (5j)": 100
+      },
+      "Crème Dessert Collet": {
+        "Entérobactéries": 10,
+        "Levures/Moisissures (5j)": 100
+      },
+      "Aliments Sante (AS)": {
+        "Flore totales": 10
+      },
+      "Dessert végétal non fermenté": {
+        "Flore totales": 1000,
+        "Entérobactéries": 10,
+        "Levures/Moisissures (5j)": 100
+      },
+      "Eaux de rincage": {
+        "Flore totales": 10,
+        "Entérobactéries": 1,
+        "Levures/Moisissures (5j)": 10
+      },
+      "Mains": {
+        "Flore totales": 51,
+        "Entérobactéries": 0
+      },
+      "Materiel": {
+        "Flore totales": 30,
+        "Entérobactéries": 1,
+        "Levures/Moisissures (5j)": 10
+      }
+    };
+    
+    const productThresholdsHardcoded = hardcodedThresholds[brand];
     if (productThresholdsHardcoded && productThresholdsHardcoded[bacteriaName] !== undefined) {
       return productThresholdsHardcoded[bacteriaName];
     }
@@ -238,12 +245,12 @@ const NonConformitesPage = () => {
   const loadNonConformForms = async () => {
     try {
       setLoading(true);
-      console.log('🔴 Chargement des formulaires avec non-conformités BACTÉRIOLOGIQUES...');
+      console.log('🔴 Chargement des non-conformités bactériologiques depuis Lectures en Attente...');
 
-      // 1. Récupérer les bactéries en attente (= formulaires dans lectures en attente)
-      const { data: bacteriaSelections, error: bacteriaError } = await fetchAllRecords(
+      // 1. Récupérer TOUTES les bactéries sélectionnées par formulaire
+      const { data: allBacteriaSelections, error: bacteriaError } = await fetchAllRecords(
         'form_bacteria_selections',
-        'form_id, bacteria_name, status',
+        'form_id, bacteria_name, status, created_at',
         { neq: { status: 'cancelled' } }
       );
 
@@ -258,8 +265,39 @@ const NonConformitesPage = () => {
         return;
       }
 
-      // Extraire les form_ids uniques des bactéries en attente
-      const formIdsInLecturesEnAttente = [...new Set(bacteriaSelections?.map(b => b.form_id).filter(Boolean) || [])];
+      console.log('🦠 Total bactéries récupérées:', allBacteriaSelections?.length);
+
+      // 2. Grouper les bactéries par form_id
+      const bacteriaByFormId: Record<string, any[]> = {};
+      allBacteriaSelections?.forEach(bacteria => {
+        if (!bacteria.form_id) return;
+        if (!bacteriaByFormId[bacteria.form_id]) {
+          bacteriaByFormId[bacteria.form_id] = [];
+        }
+        bacteriaByFormId[bacteria.form_id].push(bacteria);
+      });
+
+      // 3. Identifier les formulaires qui sont dans "Lectures en Attente"
+      // = Formulaires qui ont au moins une bactérie et qui ne sont PAS entièrement complétés
+      const formIdsInLecturesEnAttente: string[] = [];
+      const formBacteriaInfo: Record<string, { total: number, completed: number, completedBacteria: string[] }> = {};
+
+      Object.entries(bacteriaByFormId).forEach(([formId, bacteriaList]) => {
+        const completedBacteria = bacteriaList.filter(b => b.status === 'completed');
+        const isFullyCompleted = bacteriaList.length > 0 && bacteriaList.every(b => b.status === 'completed');
+        
+        // Un formulaire est dans "Lectures en Attente" s'il n'est PAS entièrement complété
+        if (!isFullyCompleted && bacteriaList.length > 0) {
+          formIdsInLecturesEnAttente.push(formId);
+        }
+        
+        formBacteriaInfo[formId] = {
+          total: bacteriaList.length,
+          completed: completedBacteria.length,
+          completedBacteria: completedBacteria.map(b => b.bacteria_name)
+        };
+      });
+
       console.log('📋 Formulaires dans Lectures en Attente:', formIdsInLecturesEnAttente.length);
 
       if (formIdsInLecturesEnAttente.length === 0) {
@@ -268,7 +306,7 @@ const NonConformitesPage = () => {
         return;
       }
 
-      // 2. Récupérer TOUS les échantillons avec leurs valeurs bactériologiques
+      // 4. Récupérer les échantillons de ces formulaires
       const { data: samplesData, error: samplesError } = await fetchAllRecords(
         'samples',
         'id, form_id, number, product, brand, site, report_title, created_at, enterobacteria_count, yeast_mold_count, listeria_count, coliforms_count, staphylococcus_count, escherichia_coli_count, total_flora_count, leuconostoc_count, yeast_mold_3j_count, yeast_mold_5j_count'
@@ -287,7 +325,7 @@ const NonConformitesPage = () => {
 
       console.log('📊 Échantillons dans Lectures en Attente:', samplesInLecturesEnAttente.length);
 
-      // 3. Récupérer les infos depuis sample_forms
+      // 5. Récupérer les infos depuis sample_forms
       const { data: sampleFormsData } = await fetchAllRecords(
         'sample_forms',
         'report_id, sample_date, site, reference'
@@ -302,7 +340,7 @@ const NonConformitesPage = () => {
         });
       });
 
-      // 4. Vérifier chaque échantillon pour les non-conformités bactériologiques
+      // 6. Pour chaque échantillon, vérifier SEULEMENT les bactéries COMPLÉTÉES
       const formGroups: Record<string, NonConformForm> = {};
 
       samplesInLecturesEnAttente.forEach(sample => {
@@ -311,18 +349,30 @@ const NonConformitesPage = () => {
 
         const brandDisplayName = getBrandDisplayName(sample.brand);
         const formInfo = sampleFormsMap.get(formId);
+        const bacteriaInfo = formBacteriaInfo[formId];
         
-        // Vérifier chaque type de bactérie
+        // Récupérer la liste des bactéries COMPLÉTÉES pour ce formulaire
+        const completedBacteriaNames = bacteriaInfo?.completedBacteria || [];
+        
+        if (completedBacteriaNames.length === 0) {
+          // Aucune bactérie complétée = rien à vérifier
+          return;
+        }
+
+        // Vérifier UNIQUEMENT les bactéries qui sont complétées
         const nonConformBacteriaList: NonConformBacteria[] = [];
 
-        Object.entries(BACTERIA_FIELD_MAPPING).forEach(([bacteriaName, fieldName]) => {
+        completedBacteriaNames.forEach(bacteriaName => {
+          const fieldName = BACTERIA_FIELD_MAPPING[bacteriaName];
+          if (!fieldName) return;
+          
           const value = sample[fieldName];
           
           if (value !== null && value !== undefined) {
             const { isOver, threshold } = isBacteriaOverThreshold(sample.brand || brandDisplayName, bacteriaName, value);
             
             if (isOver && threshold !== null) {
-              console.log(`🔴 NON-CONFORME: ${bacteriaName} = ${value} (seuil: ${threshold}) pour ${sample.brand}`);
+              console.log(`🔴 NON-CONFORME: ${bacteriaName} = ${value} (seuil: < ${threshold}) pour ${sample.brand}`);
               nonConformBacteriaList.push({
                 sample_id: sample.id,
                 sample_number: sample.number,
@@ -366,7 +416,9 @@ const NonConformitesPage = () => {
               sample_count: 0,
               non_conform_bacteria: [],
               created_at: sample.created_at,
-              sample_date: formInfo?.sample_date || sample.created_at
+              sample_date: formInfo?.sample_date || sample.created_at,
+              total_bacteria: bacteriaInfo?.total || 0,
+              completed_bacteria: bacteriaInfo?.completed || 0
             };
           }
 
@@ -380,7 +432,14 @@ const NonConformitesPage = () => {
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
 
-      console.log('✅ Formulaires avec non-conformités BACTÉRIOLOGIQUES:', sortedForms.length);
+      console.log('✅ Formulaires avec non-conformités BACTÉRIOLOGIQUES (depuis Lectures en Attente):', sortedForms.length);
+      sortedForms.forEach(form => {
+        console.log(`  📋 ${form.report_title}: ${form.non_conform_bacteria.length} non-conformité(s)`);
+        form.non_conform_bacteria.forEach(nc => {
+          console.log(`     🔴 ${nc.bacteria_name}: ${nc.value} (seuil: < ${nc.threshold})`);
+        });
+      });
+      
       setNonConformForms(sortedForms);
       setLoading(false);
 
@@ -429,7 +488,7 @@ const NonConformitesPage = () => {
                 Non-Conformités Bactériologiques
               </h1>
               <p className="text-red-100 text-lg">
-                Formulaires de "Lectures en Attente" avec des seuils bactériologiques dépassés
+                Formulaires de "Lectures en Attente" avec des bactéries <strong>complétées</strong> dont le seuil est dépassé
               </p>
             </div>
             <div className="text-right">
@@ -450,7 +509,7 @@ const NonConformitesPage = () => {
             <div>
               <h3 className="font-medium text-amber-800">Page de consultation uniquement</h3>
               <p className="text-sm text-amber-700 mt-1">
-                Cette page affiche les formulaires de <strong>"Lectures en Attente"</strong> où au moins une <strong>valeur bactériologique dépasse le seuil</strong>.
+                Cette page affiche les formulaires de <strong>"Lectures en Attente"</strong> où une bactérie <strong>déjà remplie</strong> (statut complété) a une valeur qui <strong>dépasse le seuil</strong>.
                 Les formulaires restent dans "Lectures en Attente" - aucune modification n'est faite ici.
               </p>
             </div>
@@ -462,10 +521,10 @@ const NonConformitesPage = () => {
             <div className="flex justify-between items-center">
               <div>
                 <CardTitle className="text-xl font-bold text-red-800">
-                  Formulaires avec Seuils Bactériologiques Dépassés
+                  Bactéries Complétées avec Seuils Dépassés
                 </CardTitle>
                 <CardDescription>
-                  Uniquement les non-conformités liées aux bactéries (pas pH, acidité, etc.)
+                  Uniquement les bactéries remplies (✅ complétées) dont la valeur ≥ seuil
                 </CardDescription>
               </div>
               <div className="flex items-center gap-3">
@@ -508,7 +567,7 @@ const NonConformitesPage = () => {
               <div className="text-center py-12 border border-dashed rounded-lg bg-green-50 border-green-200">
                 <Beaker className="h-16 w-16 text-green-500 mx-auto mb-4" />
                 <h3 className="text-xl font-medium text-green-800 mb-2">Aucune non-conformité bactériologique</h3>
-                <p className="text-green-600">Tous les formulaires en attente ont des valeurs bactériologiques conformes aux seuils.</p>
+                <p className="text-green-600">Toutes les bactéries complétées dans "Lectures en Attente" ont des valeurs conformes aux seuils.</p>
               </div>
             ) : getFilteredForms().length === 0 ? (
               <div className="text-center py-8 border border-dashed rounded-lg bg-gray-50">
@@ -559,8 +618,8 @@ const NonConformitesPage = () => {
                               <span>Site: <strong>{form.site}</strong></span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <FileText className="h-4 w-4 text-gray-400" />
-                              <span>Échantillons concernés: <strong>{form.sample_count}</strong></span>
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                              <span>Bactéries: <strong>{form.completed_bacteria}/{form.total_bacteria} complétées</strong></span>
                             </div>
                             <div className="flex items-center gap-2">
                               <Calendar className="h-4 w-4 text-gray-400" />
@@ -570,7 +629,7 @@ const NonConformitesPage = () => {
                         </div>
                         <div className="flex flex-col items-end gap-2">
                           <Badge className="bg-red-500 text-white text-sm px-3 py-1">
-                            {form.non_conform_bacteria.length} bactérie(s) hors seuil
+                            {form.non_conform_bacteria.length} non-conforme(s)
                           </Badge>
                           <span className="text-xs text-gray-500">
                             {expandedFormId === form.form_id ? '▲ Réduire' : '▼ Voir détails'}
@@ -584,7 +643,7 @@ const NonConformitesPage = () => {
                       <div className="p-6 border-t border-red-200 bg-white">
                         <h4 className="text-sm font-semibold text-red-800 mb-4 flex items-center gap-2">
                           <AlertTriangle className="h-4 w-4" />
-                          Bactéries avec seuil dépassé:
+                          Bactéries complétées avec seuil dépassé:
                         </h4>
                         <div className="space-y-3">
                           {form.non_conform_bacteria.map((bacteria, idx) => (
@@ -603,7 +662,7 @@ const NonConformitesPage = () => {
                                 </div>
                               </div>
                               
-                              <div className="mt-3 flex items-center gap-4">
+                              <div className="mt-3 flex items-center gap-4 flex-wrap">
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm font-medium text-red-700">
                                     {bacteria.bacteria_name}:
@@ -616,7 +675,7 @@ const NonConformitesPage = () => {
                                   Seuil: <span className="font-medium">&lt; {bacteria.threshold}</span>
                                 </div>
                                 <Badge className="bg-red-600 text-white">
-                                  DÉPASSÉ
+                                  ⚠️ SEUIL DÉPASSÉ
                                 </Badge>
                               </div>
                             </div>
@@ -636,12 +695,16 @@ const NonConformitesPage = () => {
           <h4 className="font-medium text-gray-700 mb-2">Légende</h4>
           <div className="flex flex-wrap gap-4 text-sm">
             <div className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              <span>Bactérie complétée (remplie)</span>
+            </div>
+            <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-red-500 rounded"></div>
-              <span>Valeur bactériologique ≥ seuil (non conforme)</span>
+              <span>Valeur ≥ seuil = Non conforme</span>
             </div>
             <div className="flex items-center gap-2">
               <Eye className="h-4 w-4 text-amber-600" />
-              <span>Consultation uniquement - Les formulaires restent dans "Lectures en Attente"</span>
+              <span>Consultation uniquement</span>
             </div>
           </div>
         </div>
