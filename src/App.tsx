@@ -28,6 +28,7 @@ import TestRedirectionPage from "./pages/TestRedirectionPage";
 import HistoryPage from "./pages/HistoryPage";
 import { ProductCreationPageNew } from "./pages/ProductCreationPageNew";
 import { ProductsManagementPageNew } from "./pages/ProductsManagementPageNew";
+import NonConformitesPage from "./pages/NonConformitesPage";
 
 const queryClient = new QueryClient();
 
@@ -87,6 +88,7 @@ function App() {
               <Route path="/history" element={<HistoryPage />} />
               <Route path="/pending-readings" element={<PendingReadingsPage />} />
               <Route path="/lectures-en-attente" element={<LecturesEnAttentePage />} />
+              <Route path="/non-conformites" element={<NonConformitesPage />} />
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/products" element={<ProductsManagementPageNew />} />
               <Route path="/products/new" element={<ProductCreationPageNew />} />

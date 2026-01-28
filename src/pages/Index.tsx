@@ -97,6 +97,14 @@ const Index = () => {
       role: 'coordinator'
     },
     {
+      title: 'Non-Conformités',
+      description: 'Voir les échantillons non conformes',
+      icon: <AlertTriangle className="h-5 w-5" />,
+      href: '/non-conformites',
+      color: 'bg-red-50 hover:bg-red-100 text-red-700',
+      role: 'both'
+    },
+    {
       title: 'Paramètres Bactéries',
       description: 'Configuration des délais',
       icon: <Settings className="h-5 w-5" />,
@@ -244,8 +252,8 @@ const Index = () => {
             Accès Rapide aux Fonctionnalités
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {quickActions.slice(0, 3).map((action, index) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {quickActions.slice(0, 4).map((action, index) => (
               <Card key={index} className={`hover:shadow-lg transition-all duration-300 cursor-pointer hover:scale-[1.02] ${action.color} border`}
                     onClick={() => handleQuickActionClick(action)}>
                 <CardContent className="p-4">

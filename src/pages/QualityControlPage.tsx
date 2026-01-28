@@ -242,6 +242,13 @@ const QualityControlPage = () => {
           icon: <History className="h-5 w-5" />,
           action: () => navigate('/forms-history'),
           color: 'bg-green-50 hover:bg-green-100 text-green-700 border-green-200'
+        },
+        {
+          title: 'Non-Conformités',
+          description: 'Voir les échantillons non conformes',
+          icon: <AlertTriangle className="h-5 w-5" />,
+          action: () => navigate('/non-conformites'),
+          color: 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200'
         }
       ]
     : [
@@ -265,6 +272,13 @@ const QualityControlPage = () => {
           icon: <Microscope className="h-5 w-5" />,
           action: () => navigate('/lectures-en-attente'),
           color: 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200'
+        },
+        {
+          title: 'Non-Conformités',
+          description: 'Voir les échantillons non conformes',
+          icon: <AlertTriangle className="h-5 w-5" />,
+          action: () => navigate('/non-conformites'),
+          color: 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200'
         }
       ];
 
