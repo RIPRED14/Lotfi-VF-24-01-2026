@@ -103,14 +103,6 @@ const Index = () => {
       href: '/bacteria-settings',
       color: 'bg-gray-50 hover:bg-gray-100 text-gray-700',
       role: 'coordinator'
-    },
-    {
-      title: 'Statistiques',
-      description: 'Tableaux de bord et rapports',
-      icon: <BarChart3 className="h-5 w-5" />,
-      href: '/quality-control-dashboard',
-      color: 'bg-purple-50 hover:bg-purple-100 text-purple-700',
-      role: 'both'
     }
   ];
 
@@ -218,11 +210,11 @@ const Index = () => {
             <BarChart3 className="h-6 w-6 text-blue-600" />
             Accès Indicateurs et Rapports
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl mx-auto">
-            {/* Tableau de Bord */}
-            <Card className="hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:scale-105 bg-purple-50 hover:bg-purple-100 border-purple-200 h-full flex flex-col"
+          <div className="grid grid-cols-1 gap-4 max-w-6xl mx-auto">
+            {/* Tableau de Bord - pleine largeur */}
+            <Card className="hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:scale-[1.02] bg-purple-50 hover:bg-purple-100 border-purple-200"
                   onClick={() => handleQuickActionClick({ href: '/quality-control-dashboard' })}>
-              <CardHeader className="text-center pb-4 flex-1">
+              <CardHeader className="text-center pb-4">
                 <BarChart3 className="h-12 w-12 text-purple-600 mx-auto mb-3 transition-transform duration-300 hover:scale-110" />
                 <CardTitle className="text-purple-800">TABLEAU DE BORD</CardTitle>
                 <CardDescription>
@@ -236,10 +228,10 @@ const Index = () => {
               </CardContent>
             </Card>
 
-            {/* Non-Conformités */}
-            <Card className="hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:scale-105 bg-red-50 hover:bg-red-100 border-red-200 h-full flex flex-col"
+            {/* Non-Conformités - pleine largeur */}
+            <Card className="hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:scale-[1.02] bg-red-50 hover:bg-red-100 border-red-200"
                   onClick={() => handleQuickActionClick({ href: '/non-conformites' })}>
-              <CardHeader className="text-center pb-4 flex-1">
+              <CardHeader className="text-center pb-4">
                 <AlertTriangle className="h-12 w-12 text-red-600 mx-auto mb-3 transition-transform duration-300 hover:scale-110" />
                 <CardTitle className="text-red-800">NON-CONFORMITÉS</CardTitle>
                 <CardDescription>
@@ -262,8 +254,8 @@ const Index = () => {
             Accès Rapide aux Fonctionnalités
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {quickActions.slice(0, 4).map((action, index) => (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {quickActions.map((action, index) => (
               <Card key={index} className={`hover:shadow-lg transition-all duration-300 cursor-pointer hover:scale-[1.02] ${action.color} border`}
                     onClick={() => handleQuickActionClick(action)}>
                 <CardContent className="p-4">
