@@ -165,6 +165,10 @@ const NonConformitesPage = () => {
         "Entérobactéries": 10,
         "Levures/Moisissures (5j)": 100
       },
+      "Créme Dessert Collet": {
+        "Entérobactéries": 10,
+        "Levures/Moisissures (5j)": 100
+      },
       "Aliments Sante (AS)": {
         "Flore totales": 10
       },
