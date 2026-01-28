@@ -218,42 +218,38 @@ const Index = () => {
             <BarChart3 className="h-6 w-6 text-blue-600" />
             Accès Indicateurs et Rapports
           </h2>
-          <div className="grid grid-cols-1 gap-4 max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl mx-auto">
             {/* Tableau de Bord */}
-            <Card className="hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:scale-[1.02] bg-purple-50 hover:bg-purple-100 border-purple-200"
+            <Card className="hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:scale-105 bg-purple-50 hover:bg-purple-100 border-purple-200 h-full flex flex-col"
                   onClick={() => handleQuickActionClick({ href: '/quality-control-dashboard' })}>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-lg bg-purple-100">
-                    <BarChart3 className="h-8 w-8 text-purple-600" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-purple-800 text-lg">TABLEAU DE BORD</h3>
-                    <p className="text-sm text-purple-600">Visualiser les statistiques et analyses</p>
-                  </div>
-                  <Button className="bg-purple-600 hover:bg-purple-700" size="sm">
-                    Accéder
-                  </Button>
-                </div>
+              <CardHeader className="text-center pb-4 flex-1">
+                <BarChart3 className="h-12 w-12 text-purple-600 mx-auto mb-3 transition-transform duration-300 hover:scale-110" />
+                <CardTitle className="text-purple-800">TABLEAU DE BORD</CardTitle>
+                <CardDescription>
+                  Visualiser les statistiques et analyses
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <Button className="w-full bg-purple-600 hover:bg-purple-700 transition-all duration-300 hover:shadow-lg" size="lg">
+                  Accéder au tableau de bord
+                </Button>
               </CardContent>
             </Card>
 
             {/* Non-Conformités */}
-            <Card className="hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:scale-[1.02] bg-red-50 hover:bg-red-100 border-red-200"
+            <Card className="hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:scale-105 bg-red-50 hover:bg-red-100 border-red-200 h-full flex flex-col"
                   onClick={() => handleQuickActionClick({ href: '/non-conformites' })}>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-lg bg-red-100">
-                    <AlertTriangle className="h-8 w-8 text-red-600" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-red-800 text-lg">NON-CONFORMITÉS</h3>
-                    <p className="text-sm text-red-600">Voir les échantillons non conformes</p>
-                  </div>
-                  <Button className="bg-red-600 hover:bg-red-700" size="sm">
-                    Accéder
-                  </Button>
-                </div>
+              <CardHeader className="text-center pb-4 flex-1">
+                <AlertTriangle className="h-12 w-12 text-red-600 mx-auto mb-3 transition-transform duration-300 hover:scale-110" />
+                <CardTitle className="text-red-800">NON-CONFORMITÉS</CardTitle>
+                <CardDescription>
+                  Voir les échantillons non conformes
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <Button className="w-full bg-red-600 hover:bg-red-700 transition-all duration-300 hover:shadow-lg" size="lg">
+                  Accéder aux non-conformités
+                </Button>
               </CardContent>
             </Card>
           </div>
