@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import Header from '@/components/Header';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Eye, Clock, Calendar, ArrowLeft, Filter, Search, Download, Building, Tag, Trash2 } from 'lucide-react';
+import { Eye, Clock, Calendar, ArrowLeft, Filter, Search, Download, Building, Tag, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -145,6 +145,10 @@ const FormsHistoryPage = () => {
   const [brandFilter, setBrandFilter] = useState<string>('all');
   const [deleteFormId, setDeleteFormId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState<boolean>(false);
+  
+  // États pour la pagination
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
 
   useEffect(() => {
     loadFormsHistory();
@@ -234,6 +238,71 @@ const FormsHistoryPage = () => {
     }
 
     return filteredForms;
+  };
+
+  // Logique de pagination
+  const filteredForms = getFilteredForms();
+  const totalPages = Math.ceil(filteredForms.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedForms = filteredForms.slice(startIndex, endIndex);
+
+  // Réinitialiser à la page 1 quand les filtres changent
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [startDateFilter, endDateFilter, siteFilter, brandFilter, itemsPerPage]);
+
+  // Fonctions de navigation de pagination
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const goToFirstPage = () => goToPage(1);
+  const goToLastPage = () => goToPage(totalPages);
+  const goToPreviousPage = () => goToPage(currentPage - 1);
+  const goToNextPage = () => goToPage(currentPage + 1);
+
+  // Générer les numéros de pages à afficher
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      // Afficher toutes les pages si peu nombreuses
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Toujours afficher la première page
+      pages.push(1);
+      
+      if (currentPage > 3) {
+        pages.push('...');
+      }
+      
+      // Pages autour de la page courante
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+      
+      for (let i = start; i <= end; i++) {
+        if (!pages.includes(i)) {
+          pages.push(i);
+        }
+      }
+      
+      if (currentPage < totalPages - 2) {
+        pages.push('...');
+      }
+      
+      // Toujours afficher la dernière page
+      if (!pages.includes(totalPages)) {
+        pages.push(totalPages);
+      }
+    }
+    
+    return pages;
   };
 
   // Obtenir la liste des sites uniques
@@ -649,7 +718,7 @@ const FormsHistoryPage = () => {
       summaryHeaderRow.alignment = { horizontal: 'center', vertical: 'middle' };
 
       // Ajouter les données de la liste
-      const formsToExport = getFilteredForms();
+      const formsToExport = filteredForms;
       formsToExport.forEach(form => {
         const row = summaryWorksheet.addRow({
           title: form.title,
@@ -862,7 +931,7 @@ const FormsHistoryPage = () => {
                   Tous les formulaires d'analyse créés
                   {(startDateFilter.trim() || endDateFilter.trim() || siteFilter !== 'all' || brandFilter !== 'all') && (
                     <span className="ml-2">
-                      - {getFilteredForms().length} sur {forms.length} formulaires
+                      - {filteredForms.length} sur {forms.length} formulaires
                     </span>
                   )}
                 </CardDescription>
@@ -870,13 +939,13 @@ const FormsHistoryPage = () => {
               <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  onClick={() => navigate('/quality-control')}
+                  onClick={() => navigate(-1)}
                   className="flex items-center space-x-2"
                 >
                   <ArrowLeft className="h-4 w-4" />
                   <span>Retour</span>
                 </Button>
-                {getFilteredForms().length > 0 && (
+                {filteredForms.length > 0 && (
                   <Button
                     onClick={exportToExcel}
                     className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white"
@@ -1025,7 +1094,7 @@ const FormsHistoryPage = () => {
                   Vous n'avez pas encore créé de formulaires d'analyse ou ils ont tous été supprimés.
                 </p>
               </div>
-            ) : getFilteredForms().length === 0 ? (
+            ) : filteredForms.length === 0 ? (
               <div className="text-center p-10 text-muted-foreground">
                 <div className="mx-auto w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
                   <Filter className="h-10 w-10 text-gray-400" />
@@ -1053,21 +1122,45 @@ const FormsHistoryPage = () => {
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted">
-                      <TableHead className="w-[300px]">Titre</TableHead>
-                      <TableHead>Date de création</TableHead>
-                      <TableHead>Date de fabrication</TableHead>
-                      <TableHead>Marque</TableHead>
-                      <TableHead>Site</TableHead>
-                      <TableHead className="text-center">Échantillons</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {getFilteredForms().map((form) => (
+              <div className="space-y-4">
+                {/* Contrôles de pagination en haut */}
+                <div className="flex flex-wrap items-center justify-between gap-4 px-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">Afficher</span>
+                    <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
+                      <SelectTrigger className="w-[80px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="20">20</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <span className="text-sm text-gray-600">par page</span>
+                  </div>
+                  
+                  <div className="text-sm text-gray-600">
+                    Affichage de <span className="font-semibold">{startIndex + 1}</span> à <span className="font-semibold">{Math.min(endIndex, filteredForms.length)}</span> sur <span className="font-semibold">{filteredForms.length}</span> formulaires
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted">
+                        <TableHead className="w-[300px]">Titre</TableHead>
+                        <TableHead>Date de création</TableHead>
+                        <TableHead>Date de fabrication</TableHead>
+                        <TableHead>Marque</TableHead>
+                        <TableHead>Site</TableHead>
+                        <TableHead className="text-center">Échantillons</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedForms.map((form) => (
                       <TableRow key={form.id} className="hover:bg-gray-50">
                         <TableCell className="font-medium">{form.title}</TableCell>
                         <TableCell>
@@ -1133,7 +1226,82 @@ const FormsHistoryPage = () => {
                       </TableRow>
                     ))}
                   </TableBody>
-                </Table>
+                  </Table>
+                </div>
+
+                {/* Contrôles de pagination en bas */}
+                {totalPages > 1 && (
+                  <div className="flex flex-wrap items-center justify-center gap-2 pt-4 border-t">
+                    {/* Bouton première page */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={goToFirstPage}
+                      disabled={currentPage === 1}
+                      className="h-8 w-8 p-0"
+                      title="Première page"
+                    >
+                      <ChevronsLeft className="h-4 w-4" />
+                    </Button>
+                    
+                    {/* Bouton page précédente */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={goToPreviousPage}
+                      disabled={currentPage === 1}
+                      className="h-8 w-8 p-0"
+                      title="Page précédente"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    
+                    {/* Numéros de pages */}
+                    <div className="flex items-center gap-1">
+                      {getPageNumbers().map((page, index) => (
+                        typeof page === 'number' ? (
+                          <Button
+                            key={index}
+                            variant={currentPage === page ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => goToPage(page)}
+                            className={`h-8 w-8 p-0 ${currentPage === page ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}`}
+                          >
+                            {page}
+                          </Button>
+                        ) : (
+                          <span key={index} className="px-2 text-gray-400">
+                            {page}
+                          </span>
+                        )
+                      ))}
+                    </div>
+                    
+                    {/* Bouton page suivante */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={goToNextPage}
+                      disabled={currentPage === totalPages}
+                      className="h-8 w-8 p-0"
+                      title="Page suivante"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    
+                    {/* Bouton dernière page */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={goToLastPage}
+                      disabled={currentPage === totalPages}
+                      className="h-8 w-8 p-0"
+                      title="Dernière page"
+                    >
+                      <ChevronsRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
